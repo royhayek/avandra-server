@@ -11,7 +11,7 @@ async function connectToDatabase() {
         const dbName = process.env.DB_NAME;
         const rs = process.env.DB_REPLICA_SET;
 
-        const connectionString = `mongodb://${user}:${password}@${host}:${port}/${dbName}?replicaSet=${rs}`;
+        const connectionString = `mongodb+srv://${user}:${password}@${host}/travelai`;
         await mongoose.connect(connectionString, {
             serverSelectionTimeoutMS: 5000
         });
