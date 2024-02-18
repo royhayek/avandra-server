@@ -7,6 +7,15 @@ const User = mongoose.model("User");
 
 require("dotenv").config({ path: ".env" });
 
+const generateJwtToken = (id) =>
+  jwt.sign(
+    {
+      id,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 10, // Set token expiration (e.g., 10 days)
+    },
+    process.env.JWT_SECRET
+  );
+
 exports.register = async (req, res) => {
   try {
     let {
@@ -14,6 +23,7 @@ exports.register = async (req, res) => {
       name,
       image,
       role,
+      gender,
       password,
       passwordCheck,
       provider,
@@ -59,30 +69,22 @@ exports.register = async (req, res) => {
 
     if (existingUser) {
       // If the user already exists, generate a new access token and include it in the response
-      const token = jwt.sign(
-        {
-          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // Set token expiration (e.g., 24 hours)
-          id: existingUser._id,
-        },
-        process.env.JWT_SECRET
-      );
+      const token = generateJwtToken(existingUser._id);
 
       return res.status(200).json({
         success: true,
         user: existingUser,
         token,
+        providerId,
         message: "User already exists with this email or providerId",
       });
-    }
-
-    if (!name) {
-      name = isLocalSignIn ? email : providerId;
     }
 
     const newUser = new User({
       email: email !== null && email !== undefined ? email : undefined,
       name,
       role,
+      gender,
       provider,
       photo: image,
       providerId:
@@ -99,13 +101,7 @@ exports.register = async (req, res) => {
 
     const savedUser = await newUser.save();
 
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // Set token expiration (e.g., 24 hours)
-        id: savedUser._id,
-      },
-      process.env.JWT_SECRET
-    );
+    const token = generateJwtToken(savedUser._id);
 
     res.status(200).json({
       success: true,
@@ -178,6 +174,15 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     // res.status(500).json({ success: false, data: null, message: err.message });
+    res.status(500).json({ success: false, data: null, message: err.message });
+  }
+};
+
+exports.checkLoggedIn = async (req, res) => {
+  try {
+    // If the control reaches here, it means the token is valid
+    res.json({ isLoggedIn: true, user: req.user });
+  } catch (err) {
     res.status(500).json({ success: false, data: null, message: err.message });
   }
 };

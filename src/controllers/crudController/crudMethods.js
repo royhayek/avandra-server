@@ -89,7 +89,9 @@ exports.createWithImage = async (Model, req, res) => {
     // Set up Multer to handle file uploads
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
-        const destinationFolder = `./public/uploads/${modelName.toLowerCase()}`; // Dynamic path based on the model name
+        const destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${
+          file.fieldname
+        }`;
         if (!fs.existsSync(destinationFolder)) {
           fs.mkdirSync(destinationFolder, { recursive: true });
           console.log(`Created "${destinationFolder}" directory.`);
@@ -97,7 +99,6 @@ exports.createWithImage = async (Model, req, res) => {
         cb(null, destinationFolder);
       },
       filename: function (req, file, cb) {
-        // Generate a unique filename
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
         cb(
           null,
@@ -106,9 +107,12 @@ exports.createWithImage = async (Model, req, res) => {
       },
     });
 
-    const upload = multer({ storage: storage }).single("image");
+    const upload = multer({ storage: storage }).fields([
+      { name: "image", maxCount: 1 },
+      { name: "flag", maxCount: 1 },
+      { name: "gallery", maxCount: 10 }, // Assuming maxCount is the maximum number of files for the gallery
+    ]);
 
-    // Use Multer middleware to handle the image upload
     await new Promise((resolve, reject) => {
       upload(req, res, (err) => {
         if (err) {
@@ -119,9 +123,32 @@ exports.createWithImage = async (Model, req, res) => {
     });
 
     // Creating a new document in the collection
+
+    // Parse JSON fields in req.body (if needed)
+    if (
+      req.body &&
+      typeof req.body === "object" &&
+      Object.keys(req.body).length > 0
+    ) {
+      for (const key in req.body) {
+        if (typeof req.body[key] === "string") {
+          try {
+            req.body[key] = JSON.parse(req.body[key]);
+          } catch (error) {
+            // Ignore parsing error, keep the original value
+          }
+        }
+      }
+    }
+
     const result = await new Model({
       ...req.body,
-      image: req.file ? req.file.filename : null,
+      image: req.files && req.files.image ? req.files.image[0].filename : null,
+      flag: req.files && req.files.flag ? req.files.flag[0].filename : null,
+      gallery:
+        req.files && req.files.gallery
+          ? req.files.gallery.map((file) => file.filename)
+          : [],
     }).save();
 
     // Returning a successful response
@@ -206,14 +233,17 @@ exports.updateWithImage = async (Model, req, res) => {
   try {
     const modelName = Model.modelName;
 
-    // Set up Multer to handle file uploads
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
-        const destinationFolder = `./public/uploads/${modelName.toLowerCase()}`;
+        let destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${
+          file.fieldname
+        }`;
+
         if (!fs.existsSync(destinationFolder)) {
           fs.mkdirSync(destinationFolder, { recursive: true });
           console.log(`Created "${destinationFolder}" directory.`);
         }
+
         cb(null, destinationFolder);
       },
       filename: function (req, file, cb) {
@@ -225,9 +255,13 @@ exports.updateWithImage = async (Model, req, res) => {
       },
     });
 
-    const upload = multer({ storage: storage }).single("image");
+    const upload = multer({ storage: storage }).fields([
+      { name: "image", maxCount: 1 },
+      { name: "flag", maxCount: 1 },
+      { name: "gallery", maxCount: 10 },
+    ]);
 
-    // Use Multer middleware to handle the image upload
+    // Use Multer middleware to handle the image, flag, and gallery uploads
     await new Promise((resolve, reject) => {
       upload(req, res, (err) => {
         if (err) {
@@ -236,6 +270,23 @@ exports.updateWithImage = async (Model, req, res) => {
         resolve();
       });
     });
+
+    // Parse JSON fields in req.body (if needed)
+    if (
+      req.body &&
+      typeof req.body === "object" &&
+      Object.keys(req.body).length > 0
+    ) {
+      for (const key in req.body) {
+        if (typeof req.body[key] === "string") {
+          try {
+            req.body[key] = JSON.parse(req.body[key]);
+          } catch (error) {
+            // Ignore parsing error, keep the original value
+          }
+        }
+      }
+    }
 
     const { ...updateFields } = req.body;
 
@@ -249,26 +300,59 @@ exports.updateWithImage = async (Model, req, res) => {
       });
     }
 
-    // Check if the image is provided in the request
-    const updatedImage = req.file ? req.file.filename : existingDoc.image;
+    // Check if the image, flag, and gallery are provided in the request
+    const updatedImage =
+      req.files && req.files.image
+        ? req.files.image[0].filename
+        : existingDoc.image;
+    const updatedFlag =
+      req.files && req.files.flag
+        ? req.files.flag[0].filename
+        : existingDoc.flag;
+    const updatedGallery =
+      req.files && req.files.gallery
+        ? req.files.gallery.map((file) => file.filename)
+        : existingDoc.gallery;
 
-    // Remove the old image if a new one is provided
-    if (existingDoc.image && req.file) {
+    // Remove the old image, flag, and gallery if new ones are provided
+    if (existingDoc.image && req.files && req.files.image) {
       const imagePath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/${
+        `../../../public/uploads/${modelName.toLowerCase()}/image/${
           existingDoc.image
         }`
       );
       fs.unlinkSync(imagePath);
     }
 
-    // Update the existing document with the provided data and new/old image
+    if (existingDoc.flag && req.files && req.files.flag) {
+      const flagPath = path.join(
+        __dirname,
+        `../../../public/uploads/${modelName.toLowerCase()}/flag/${
+          existingDoc.flag
+        }`
+      );
+      fs.unlinkSync(flagPath);
+    }
+
+    if (existingDoc.gallery && req.files && req.files.gallery) {
+      existingDoc.gallery.forEach((filename) => {
+        const galleryPath = path.join(
+          __dirname,
+          `../../../public/uploads/${modelName.toLowerCase()}/gallery/${filename}`
+        );
+        fs.unlinkSync(galleryPath);
+      });
+    }
+
+    // Update the existing document with the provided data and new/old image, flag, and gallery
     const updatedDoc = await Model.findByIdAndUpdate(
       req.params.id,
       {
         ...updateFields,
         image: updatedImage,
+        flag: updatedFlag,
+        gallery: updatedGallery,
       },
       { new: true }
     );
@@ -299,7 +383,7 @@ exports.updateWithImage = async (Model, req, res) => {
 };
 
 /**
- * Deletes a single document by ID and associated image if present.
+ * Deletes a single document by ID and associated images if present.
  * @param {Model} Model - Mongoose model for the document.
  * @param {Object} req - Express request object.
  * @param {Object} res - Express response object.
@@ -320,14 +404,33 @@ exports.delete = async (Model, req, res) => {
       });
     }
 
-    // Check if there is an image associated with the document
+    // Check and delete associated images
     if (document.image) {
-      // Delete the associated image
       const imagePath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/${document.image}`
+        `../../../public/uploads/${modelName.toLowerCase()}/image/${document.image}`
       );
       fs.unlinkSync(imagePath);
+    }
+
+    if (document.flag) {
+      const flagPath = path.join(
+        __dirname,
+        `../../../public/uploads/${modelName.toLowerCase()}/flag/${
+          document.flag
+        }`
+      );
+      fs.unlinkSync(flagPath);
+    }
+
+    if (document.gallery && document.gallery.length > 0) {
+      document.gallery.forEach((galleryImage) => {
+        const galleryPath = path.join(
+          __dirname,
+          `../../../public/uploads/${modelName.toLowerCase()}/gallery/${galleryImage}`
+        );
+        fs.unlinkSync(galleryPath);
+      });
     }
 
     // Find the document by ID and delete it

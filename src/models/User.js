@@ -19,12 +19,14 @@ const userSchema = new Schema({
     lowercase: true,
     trim: true,
     sparse: true,
-    // required: true,
   },
   password: {
     type: String,
   },
   name: { type: String, required: true },
+  gender: {
+    type: String,
+  },
   photo: {
     type: String,
     trim: true,

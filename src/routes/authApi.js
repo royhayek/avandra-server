@@ -17,6 +17,7 @@ const { loginDemo } = require("../controllers/authControllerDemo");
 
 router.route("/register").post(catchErrors(register));
 router.route("/login").post(catchErrors(login));
+router.route("/validateToken").get(catchErrors(isValidToken));
 router.route("/logout").post(isValidToken, catchErrors(logout));
 
 module.exports = router;
