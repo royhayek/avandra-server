@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 
 const { catchErrors } = require("../handlers/errorHandlers");
+
+const walkthroughController = require("../controllers/walkthroughController");
 const {
   isValidToken,
   login,
@@ -10,14 +12,11 @@ const {
   register,
 } = require("../controllers/authController");
 
-const { loginDemo } = require("../controllers/authControllerDemo");
-
-// for development & production don't use this line router.route("/login").post(catchErrors(loginDemo)); (you should remove it) , this is just demo login contoller
-// router.route("/login").post(catchErrors(loginDemo));
-
 router.route("/register").post(catchErrors(register));
 router.route("/login").post(catchErrors(login));
 router.route("/validateToken").get(catchErrors(isValidToken));
 router.route("/logout").post(isValidToken, catchErrors(logout));
+
+router.route("/walkthrough/list").get(catchErrors(walkthroughController.list));
 
 module.exports = router;

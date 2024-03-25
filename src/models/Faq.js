@@ -3,27 +3,33 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
-const Language = require("./Language");
-
 const faqSchema = new Schema(
   {
-    categoryId: {
+    language: {
+      type: Schema.Types.ObjectId,
+      ref: "Language",
+      requred: true,
+    },
+    category: {
       type: Schema.Types.ObjectId,
       ref: "FaqCategory",
       required: true,
     },
     question: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     answer: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     order: {
       type: Number,
       required: true,
-      unique: true,
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

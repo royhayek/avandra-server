@@ -1,34 +1,39 @@
 const mongoose = require("mongoose");
-const Language = require("./Language");
 
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
 const destinationSchema = new Schema(
   {
+    language: {
+      type: Schema.Types.ObjectId,
+      ref: "Language",
+      requred: true,
+    },
     name: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     description: {
-      type: [Language.schema],
+      type: String,
+      required: true,
     },
     image: {
       type: String,
     },
     country: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     flag: {
       type: String,
     },
     continent: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     currency: {
-      type: [Language.schema],
+      type: String,
       required: true,
     },
     gallery: {

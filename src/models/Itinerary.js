@@ -6,13 +6,26 @@ mongoose.Promise = global.Promise;
 const directionSchema = mongoose.model("Direction").schema;
 
 const itinerarySchema = new Schema({
+  language: {
+    type: Schema.Types.ObjectId,
+    ref: "Language",
+  },
   image: String,
-  name: String,
-  time: String,
+  name: {
+    type: String,
+    required: true,
+  },
+  time: {
+    type: String,
+    required: true,
+  },
   estimatedCost: Number,
   rating: Number,
   reviews: Number,
-  type: String,
+  type: {
+    type: String,
+    required: true,
+  },
   directions: directionSchema,
 });
 

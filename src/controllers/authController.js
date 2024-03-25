@@ -142,13 +142,7 @@ exports.login = async (req, res) => {
         message: "Invalid credentials.",
       });
 
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-        id: admin._id,
-      },
-      process.env.JWT_SECRET
-    );
+    const token = generateJwtToken(admin.id);
 
     const result = await User.findOneAndUpdate(
       { _id: admin._id },

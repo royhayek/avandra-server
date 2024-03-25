@@ -3,11 +3,14 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
-const Language = require("./Language");
-
 const articleSchema = new Schema({
+  language: {
+    type: Schema.Types.ObjectId,
+    ref: "Language",
+    requred: true,
+  },
   name: {
-    type: [Language.schema],
+    type: String,
     required: true,
   },
   image: {
@@ -19,7 +22,7 @@ const articleSchema = new Schema({
     required: true,
   },
   details: {
-    type: [Language.schema],
+    type: String,
     required: true,
   },
   enabled: {

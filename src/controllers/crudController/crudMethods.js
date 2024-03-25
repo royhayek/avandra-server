@@ -1,6 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
+const mongoose = require("mongoose");
+
+const { generatePopulationOptions } = require("../../helpers");
+
+const Language = mongoose.model("Language");
 
 /**
  * Retrieves a single document by ID.
@@ -55,6 +60,7 @@ exports.create = async (Model, req, res) => {
       message: `${modelName} successfully created`,
     });
   } catch (err) {
+    console.debug("err", err);
     // If an error is thrown by Mongoose due to required validations
     if (err.name == "ValidationError") {
       return res.status(400).json({
@@ -107,7 +113,7 @@ exports.createWithImage = async (Model, req, res) => {
       },
     });
 
-    const upload = multer({ storage: storage }).fields([
+    const upload = multer({ storage: storage, limits: 100000 }).fields([
       { name: "image", maxCount: 1 },
       { name: "flag", maxCount: 1 },
       { name: "gallery", maxCount: 10 }, // Assuming maxCount is the maximum number of files for the gallery
@@ -185,6 +191,8 @@ exports.createWithImage = async (Model, req, res) => {
  */
 exports.update = async (Model, req, res) => {
   try {
+    const modelName = Model.modelName;
+
     // Find a document by ID and update it with the required fields
     const result = await Model.findOneAndUpdate(
       { _id: req.params.id },
@@ -198,7 +206,7 @@ exports.update = async (Model, req, res) => {
     return res.status(200).json({
       success: true,
       result,
-      message: "Document updated with ID: " + req.params.id,
+      message: `${modelName} updated successfully`,
     });
   } catch (err) {
     // If an error is thrown by Mongoose due to required validations
@@ -255,7 +263,7 @@ exports.updateWithImage = async (Model, req, res) => {
       },
     });
 
-    const upload = multer({ storage: storage }).fields([
+    const upload = multer({ storage: storage, limits: 100000 }).fields([
       { name: "image", maxCount: 1 },
       { name: "flag", maxCount: 1 },
       { name: "gallery", maxCount: 10 },
@@ -313,7 +321,10 @@ exports.updateWithImage = async (Model, req, res) => {
       req.files && req.files.gallery
         ? req.files.gallery.map((file) => file.filename)
         : existingDoc.gallery;
-
+    console.debug("req.files", req.files);
+    console.debug("req.files.image", req.files.image);
+    console.debug("req.files.gallery", req.files.gallery);
+    console.debug("updatedGallery", updatedGallery);
     // Remove the old image, flag, and gallery if new ones are provided
     if (existingDoc.image && req.files && req.files.image) {
       const imagePath = path.join(
@@ -337,6 +348,7 @@ exports.updateWithImage = async (Model, req, res) => {
 
     if (existingDoc.gallery && req.files && req.files.gallery) {
       existingDoc.gallery.forEach((filename) => {
+        console.debug("filename", filename);
         const galleryPath = path.join(
           __dirname,
           `../../../public/uploads/${modelName.toLowerCase()}/gallery/${filename}`
@@ -408,7 +420,9 @@ exports.delete = async (Model, req, res) => {
     if (document.image) {
       const imagePath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/image/${document.image}`
+        `../../../public/uploads/${modelName.toLowerCase()}/image/${
+          document.image
+        }`
       );
       fs.unlinkSync(imagePath);
     }
@@ -466,25 +480,39 @@ exports.delete = async (Model, req, res) => {
  * @returns {Object} Results with pagination
  */
 exports.list = async (Model, req, res) => {
-  const page = req.query.page || 1;
-  const limit = parseInt(req.query.items) || 10;
-  const skip = page * limit - limit;
+  const lang = req.headers["accept-language"];
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.items) || 20;
+  const skip = (page - 1) * limit;
+
   try {
-    // Query the database for a list of all results
-    const resultsPromise = Model.find()
-      .skip(skip)
-      .limit(limit)
-      .sort({ created: "desc" })
-      .populate();
-    // Count the total number of documents
-    const countPromise = Model.countDocuments();
-    // Resolve both promises
-    const [result, count] = await Promise.all([resultsPromise, countPromise]);
+    // Generate population options based on the Model schema
+    const populationOptions = generatePopulationOptions(Model);
+
+    const languageId = await Language.findOne({ value: lang });
+
+    // Start the query and dynamically apply population options
+    let model = languageId
+      ? Model.find({ language: languageId })
+      : Model.find();
+    let query = model.skip(skip).limit(limit).sort({ created: "desc" });
+
+    // Apply each population option to the query
+    populationOptions.forEach((option) => {
+      query = query.populate(option.path); // Customize this if needed
+    });
+
+    // Execute the query with dynamic population
+    const result = await query.exec();
+    const count = await Model.countDocuments(
+      languageId ? { language: languageId } : {}
+    );
+
     // Calculate total pages
     const pages = Math.ceil(count / limit);
-
-    // Get Pagination Object
     const pagination = { page, pages, count };
+
     if (count > 0) {
       return res.status(200).json({
         success: true,
@@ -492,14 +520,15 @@ exports.list = async (Model, req, res) => {
         pagination,
       });
     } else {
-      return res.status(203).json({
+      return res.status(204).json({
         success: false,
         data: [],
         pagination,
         message: "Collection is Empty",
       });
     }
-  } catch {
+  } catch (error) {
+    console.error(error); // Log the error for debugging
     return res
       .status(500)
       .json({ success: false, data: [], message: "Oops, there is an error" });

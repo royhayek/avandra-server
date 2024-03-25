@@ -7,7 +7,7 @@ const promisify = require("es6-promisify");
 const MongoStore = require("connect-mongo");
 
 const apiRouter = require("./src/routes/api");
-const authApiRouter = require("./src/routes/authApi");
+const publicApiRouter = require("./src/routes/publicApi");
 
 const errorHandlers = require("./src/handlers/errorHandlers");
 
@@ -72,7 +72,7 @@ app.use(function (req, res, next) {
   }
 });
 
-app.use("/api", authApiRouter);
+app.use("/api", publicApiRouter);
 
 // for development & production don't use this line app.use("/api", apiRouter); , this is just demo login contoller
 // app.use("/api", apiRouter);

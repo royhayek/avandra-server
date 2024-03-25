@@ -7,6 +7,11 @@ const ItineraryList = require("./ItineraryList");
 
 const tripSchema = new Schema(
   {
+    language: {
+      type: Schema.Types.ObjectId,
+      ref: "Language",
+      requred: true,
+    },
     name: {
       type: String,
       required: true,
@@ -23,14 +28,19 @@ const tripSchema = new Schema(
       type: String,
       required: true,
     },
-    travelerId: {
+    traveler: {
       type: Schema.Types.ObjectId,
       ref: "Traveler",
       required: true,
     },
-    budgetId: {
+    budget: {
       type: Schema.Types.ObjectId,
       ref: "Budget",
+      required: true,
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     image: String,
@@ -43,6 +53,12 @@ const tripSchema = new Schema(
       longitude: Number,
     },
     itineraries: [ItineraryList.schema],
+    status: {
+      type: String,
+      required: true,
+      enum: ["active", "upcoming", "expired"],
+      default: "upcoming",
+    },
   },
   { timestamps: true }
 );

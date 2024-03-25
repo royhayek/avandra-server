@@ -3,19 +3,21 @@ const { catchErrors } = require("../handlers/errorHandlers");
 
 const router = express.Router();
 
-const userController = require("../controllers/userController");
-const dashboardController = require("../controllers/dashboardController");
-const destinationController = require("../controllers/destinationController");
-const walkthroughController = require("../controllers/walkthroughController");
-const articleController = require("../controllers/articleController");
-const travelerController = require("../controllers/travelerController");
-const budgetController = require("../controllers/budgetController");
-const interestController = require("../controllers/interestController");
-const contactController = require("../controllers/contactController");
-const faqCategoryController = require("../controllers/faqCategoryController");
 const faqController = require("../controllers/faqController");
 const tripController = require("../controllers/tripController");
+const userController = require("../controllers/userController");
+const configController = require("../controllers/configController");
+const budgetController = require("../controllers/budgetController");
+const articleController = require("../controllers/articleController");
+const messageController = require("../controllers/messageController");
+const languageController = require("../controllers/languageController");
+const travelerController = require("../controllers/travelerController");
+const interestController = require("../controllers/interestController");
 const settingsController = require("../controllers/settingsController");
+const dashboardController = require("../controllers/dashboardController");
+const faqCategoryController = require("../controllers/faqCategoryController");
+const destinationController = require("../controllers/destinationController");
+const walkthroughController = require("../controllers/walkthroughController");
 
 // *** User Routes *** //
 router.route("/user/create").post(catchErrors(userController.create));
@@ -27,6 +29,9 @@ router.route("/user/list").get(catchErrors(userController.list));
 router
   .route("/user/password-update/:id")
   .patch(catchErrors(userController.updatePassword));
+
+// *** Configuration Routes *** //
+router.route("/config").get(catchErrors(configController.read));
 
 // *** Dashboard Routes *** //
 router.route("/dashboard").get(catchErrors(dashboardController.read));
@@ -106,38 +111,62 @@ router
   .delete(catchErrors(interestController.delete));
 router.route("/interest/list").get(catchErrors(interestController.list));
 
-router.route("/contact/create").post(catchErrors(contactController.create));
-router.route("/contact/read/:id").get(catchErrors(contactController.read));
+router.route("/message/create").post(catchErrors(messageController.create));
+router.route("/message/read/:id").get(catchErrors(messageController.read));
 router
-  .route("/contact/update/:id")
-  .patch(catchErrors(contactController.update));
+  .route("/message/update/:id")
+  .patch(catchErrors(messageController.update));
 router
-  .route("/contact/delete/:id")
-  .delete(catchErrors(contactController.delete));
-router.route("/contact/list").get(catchErrors(contactController.list));
+  .route("/message/delete/:id")
+  .delete(catchErrors(messageController.delete));
+router.route("/message/list").get(catchErrors(messageController.list));
 
-router.route("/faqcategory/create").post(catchErrors(faqCategoryController.create));
-router.route("/faqcategory/read/:id").get(catchErrors(faqCategoryController.read));
-router.route("/faqcategory/update/:id").patch(catchErrors(faqCategoryController.update));
-router.route("/faqcategory/delete/:id").delete(catchErrors(faqCategoryController.delete));
+router
+  .route("/faqcategory/create")
+  .post(catchErrors(faqCategoryController.create));
+router
+  .route("/faqcategory/read/:id")
+  .get(catchErrors(faqCategoryController.read));
+router
+  .route("/faqcategory/update/:id")
+  .patch(catchErrors(faqCategoryController.update));
+router
+  .route("/faqcategory/delete/:id")
+  .delete(catchErrors(faqCategoryController.delete));
 router.route("/faqcategory/list").get(catchErrors(faqCategoryController.list));
 
 router.route("/faq/create").post(catchErrors(faqController.create));
 router.route("/faq/read/:id").get(catchErrors(faqController.read));
 router.route("/faq/update/:id").patch(catchErrors(faqController.update));
 router.route("/faq/delete/:id").delete(catchErrors(faqController.delete));
-router.route("/faq/list").get(catchErrors(faqController.list));
+router.route("/faq/list/:id").get(catchErrors(faqController.list));
 
 router.route("/trip/create").post(catchErrors(tripController.createWithImage));
 router.route("/trip/read/:id").get(catchErrors(tripController.read));
-router.route("/trip/update/:id").patch(catchErrors(tripController.updateWithImage));
+router
+  .route("/trip/update/:id")
+  .patch(catchErrors(tripController.updateWithImage));
 router.route("/trip/delete/:id").delete(catchErrors(tripController.delete));
 router.route("/trip/list").get(catchErrors(tripController.list));
 
 router.route("/settings/create").post(catchErrors(settingsController.create));
 router.route("/settings/read/:id").get(catchErrors(settingsController.read));
-router.route("/settings/update/:id").patch(catchErrors(settingsController.update));
-router.route("/settings/delete/:id").delete(catchErrors(settingsController.delete));
+router
+  .route("/settings/update/:id")
+  .patch(catchErrors(settingsController.update));
+router
+  .route("/settings/delete/:id")
+  .delete(catchErrors(settingsController.delete));
 router.route("/settings/list").get(catchErrors(settingsController.list));
+
+router.route("/language/create").post(catchErrors(languageController.create));
+router.route("/language/read/:id").get(catchErrors(languageController.read));
+router
+  .route("/language/update/:id")
+  .patch(catchErrors(languageController.update));
+router
+  .route("/language/delete/:id")
+  .delete(catchErrors(languageController.delete));
+router.route("/language/list").get(catchErrors(languageController.list));
 
 module.exports = router;

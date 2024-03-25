@@ -18,7 +18,7 @@ exports.list = async (req, res) => {
       .sort({ created: "desc" })
       .populate();
     // Counting the total documents
-    const countPromise = User.count();
+    const countPromise = User.countDocuments();
     // Resolving both promises
     const [result, count] = await Promise.all([resultsPromise, countPromise]);
     // Calculating total pages
@@ -44,10 +44,8 @@ exports.list = async (req, res) => {
         message: "Collection is Empty",
       });
     }
-  } catch {
-    return res
-      .status(500)
-      .json({ success: false, data: [], message: "Oops there is an Error" });
+  } catch (err) {
+    return res.status(500).json({ success: false, data: [], message: err.message });
   }
 };
 exports.profile = async (req, res) => {

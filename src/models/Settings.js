@@ -6,6 +6,11 @@ mongoose.Promise = global.Promise;
 const faqCategorySchema = mongoose.model("FaqCategory").schema;
 
 const settingsSchema = new Schema({
+  language: {
+    type: Schema.Types.ObjectId,
+    ref: "Language",
+    requred: true,
+  },
   termsAndConditions: {
     type: String,
     required: true,
