@@ -158,6 +158,7 @@ router
   .route("/settings/delete/:id")
   .delete(catchErrors(settingsController.delete));
 router.route("/settings/list").get(catchErrors(settingsController.list));
+router.route("/settings/privacyPolicy").get(catchErrors(settingsController.privacyPolicy));
 
 router.route("/language/create").post(catchErrors(languageController.create));
 router.route("/language/read/:id").get(catchErrors(languageController.read));

@@ -6,7 +6,7 @@ const { generatePopulationOptions } = require("../helpers");
 const methods = require("./crudController");
 module.exports = methods.crudController("Faq");
 
-exports.list = async (req, res) => {
+module.exports.list = async (req, res) => {
   const lang = req.headers["accept-language"];
 
   const page = parseInt(req.query.page) || 1;
