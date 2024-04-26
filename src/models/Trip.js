@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
+const PlacesList = require("./PlacesList");
 const ItineraryList = require("./ItineraryList");
 
 const tripSchema = new Schema(
@@ -11,6 +12,10 @@ const tripSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Language",
       requred: true,
+    },
+    flag: {
+      type: String,
+      required: true,
     },
     name: {
       type: String,
@@ -44,6 +49,7 @@ const tripSchema = new Schema(
       required: true,
     },
     image: String,
+    tips: [String],
     description: String,
     continent: String,
     currency: String,
@@ -52,6 +58,7 @@ const tripSchema = new Schema(
       latitude: Number,
       longitude: Number,
     },
+    places: [PlacesList.schema],
     itineraries: [ItineraryList.schema],
     status: {
       type: String,

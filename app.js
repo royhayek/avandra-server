@@ -5,6 +5,8 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 const promisify = require("es6-promisify");
 const MongoStore = require("connect-mongo");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const apiRouter = require("./src/routes/api");
 const publicApiRouter = require("./src/routes/publicApi");
@@ -16,6 +18,13 @@ const { isValidToken } = require("./src/controllers/authController");
 require("dotenv").config({ path: ".env" });
 
 const app = express();
+const server = http.createServer(app); // Create an HTTP server
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust this in production for security!
+    methods: ["GET", "POST"],
+  },
+});
 
 // Serve static files from the 'public' director.
 app.use(express.static(path.join(__dirname, "public")));
@@ -41,6 +50,19 @@ app.use(
     store: MongoStore.create({ mongoUrl: process.env.DATABASE }),
   })
 );
+
+// Socket.io connection handler
+io.on("connection", (socket) => {
+  console.log(`⚡: ${socket.id} user just connected!`);
+
+  socket.emit("progress", "Welcome to the Chat App!!");
+
+  socket.on("disconnect", () => {
+    console.log("🔥: A user disconnected");
+  });
+
+  // You can emit from here or listen for messages
+});
 
 // pass variables to our templates + all requests
 app.use((req, res, next) => {
@@ -99,4 +121,4 @@ if (app.get("env") === "development") {
 app.use(errorHandlers.productionErrors);
 
 // done! we export it so we can start the site in start.js
-module.exports = app;
+module.exports = { app, server, io };

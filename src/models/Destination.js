@@ -36,6 +36,8 @@ const destinationSchema = new Schema(
       type: String,
       required: true,
     },
+    bestTime: String,
+    spokenLang: String,
     gallery: {
       type: [String],
     },

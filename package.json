@@ -26,8 +26,12 @@
     "mongoose": "^8.1.2",
     "mongoose-autopopulate": "^0.14.0",
     "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.38.0",
     "pino": "^7.9.0",
-    "pino-pretty": "^7.5.4"
+    "pino-pretty": "^7.5.4",
+    "socket.io": "^4.7.1",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "http-proxy-middleware": "^2.0.6",
