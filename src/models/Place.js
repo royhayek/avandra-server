@@ -19,10 +19,7 @@ const placeSchema = new Schema({
     type: Object,
     required: true,
   },
-  description: {
-    type: String,
-    required: true,
-  },
+  description: String,
   internationalPhone: String,
   rating: Number,
   openingHours: Object,
