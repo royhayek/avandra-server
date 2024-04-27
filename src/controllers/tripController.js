@@ -1,15 +1,16 @@
-const { server } = require("../../app");
 const OpenAI = require("openai");
 const mongoose = require("mongoose");
-const io = require("socket.io")(server);
 const wss = require("../../websocket");
+const path = require("path");
 
 const Trip = mongoose.model("Trip");
 const Budget = mongoose.model("Budget");
 const Traveler = mongoose.model("Traveler");
 const Language = mongoose.model("Language");
+const Destination = mongoose.model("Destination");
 
 const methods = require("./crudController");
+
 module.exports = methods.crudController("Trip");
 
 const openai = new OpenAI({
@@ -33,11 +34,13 @@ const handleOpenAIError = (err) => {
   }
 };
 
-const generateCompletion = async (content, model) => {
+const generateCompletion = async (content, model, temperature = 0.5, top_p = 0.9) => {
   try {
     return await openai.chat.completions.create({
       messages: [{ role: "system", content }],
       model,
+      top_p: top_p, // Control diversity of responses, narrower slice of the probability distribution
+      temperature: temperature, // Control randomness (0 is deterministic, 1 is more random)
       response_format: { type: "json_object" },
     });
   } catch (err) {
@@ -70,7 +73,7 @@ const getPlaceDetailsAndPhoto = async (placeId, fields, apiKey) => {
   return { ...data.result, photo_url };
 };
 
-const fetchPlacesDetails = async (places, apiKey) => {
+const fetchPlacesDetails = async (places, apiKey, updateProgress) => {
   const results = [];
 
   for (const place of places) {
@@ -87,13 +90,15 @@ const fetchPlacesDetails = async (places, apiKey) => {
     );
     console.debug("[fetchPlacesDetails - placeId]", { placeId, place, details });
 
+    updateProgress("Generating places to visit...", 1);
+
     results.push({ ...place, details });
   }
 
   return results;
 };
 
-module.exports.generate = async (req, res) => {
+module.exports.generate = (io) => async (req, res) => {
   try {
     // Get request body
     const {
@@ -114,33 +119,47 @@ module.exports.generate = async (req, res) => {
 
     // Assuming each client connects with a unique socket ID
     const socketId = req.body.socketId;
-    const socket = io;
+    const socket = io.to(socketId);
 
-    // Initial progress update
-    socket.emit("progress", { message: "Starting itinerary generation...", progress: 0 });
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send("Starting itinerary generation...");
-      }
-    });
+    // Initialize progress
+    let progress = 0;
+
+    function updateProgress(message, increment) {
+      progress += increment;
+      socket.emit("progress", { message, percent: Math.min(progress, 100) });
+    }
+
+    // Emit initial progress
+    updateProgress("Starting itinerary generation...", 1);
 
     // Generate summary and tips
-    socket.emit("progress", { message: "Generating summary and tips...", progress: 25 });
     const chosenTraveler = await Traveler.findById(traveler);
+    updateProgress("Generating summary and tips...", 2);
+
     const chosenBudget = await Budget.findById(budget);
+    updateProgress("Generating summary and tips...", 2);
 
     const placeId = await findPlaceId(destination?.name, destination?.country, process.env.GOOGLE_API_KEY);
-    const google_details = await getPlaceDetailsAndPhoto(placeId, "photo", process.env.GOOGLE_API_KEY);
-    const google_image = google_details?.photo_url;
+    updateProgress("Generating summary and tips...", 3);
 
-    const infoPrompt = `Provide a brief summary, a few tips (array of string), and a flag emoji (from emojipedia) for a trip to ${destination?.name}, ${destination?.country} in JSON format`;
+    const google_details = await getPlaceDetailsAndPhoto(placeId, "photo", process.env.GOOGLE_API_KEY);
+    updateProgress("Generating summary and tips...", 2);
+
+    const googleImage = google_details?.photo_url;
+
+    updateProgress("Generating summary and tips...", 2);
+
+    const infoPrompt = `Provide a brief summary, a few tips (array of string), and a country flag for a trip to ${destination?.name}, ${destination?.country} in JSON format`;
     console.debug("[TripController - generate info prompt] :: ", infoPrompt);
 
     const infoChatCompletion = await generateCompletion(infoPrompt, "gpt-3.5-turbo-1106");
+    for (let i = 0; i < 20; i++) {
+      // Artificially creating smaller steps
+      await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work
+      updateProgress("Generating summary and tips...", 1);
+    }
 
     // Generate places to visit
-    socket.emit("progress", { message: "Generating places to visit...", progress: 50 });
-
     const placesPrompt =
       `Create a complete JSON itinerary to ${destination?.name}, ${destination?.country} ` +
       (byDate
@@ -149,31 +168,41 @@ module.exports.generate = async (req, res) => {
       ` Focusing on ${interests} ` +
       `with a ${chosenBudget?.title} budget. ` +
       "Include three meals daily and three interest-based activities. " +
-      "Format: [{ 'd': '', 'p': [{ 't': '',  'n': '', 'a': '', 'c': { 'lat': '', 'lng': '' }, 'i': ''} ]}]. " +
-      "d: date, p: places (array), t: type (restaurant/landmark), n: name, a: address, c: coordinates, i: description";
+      "Format: [{ 'd': '', 'p': [{ 't': '',  'n': '', 'a': '', 'c': { 'lat': '', 'lng': '' }} ]}]. " +
+      "d: date, p: places (array), t: type (restaurant/landmark), n: name, a: address, c: coordinates";
 
     console.debug("[TripController - generate places prompt] :: ", placesPrompt);
 
-    const placesChatCompletion = await generateCompletion(placesPrompt, "gpt-4-turbo");
+    updateProgress("Generating places to visit...", 2);
+    const placesChatCompletion = await generateCompletion(placesPrompt, "gpt-4-turbo", 0.5, 0.5);
+    for (let i = 0; i < 30; i++) {
+      // Artificially creating smaller steps
+      await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work
+      updateProgress("Generating places to visit....", 1);
+    }
 
     // Parse info and places JSON objects
-    socket.emit("progress", { message: "Finalizing details...", progress: 75 });
     const parsedInfoObject = JSON.parse(infoChatCompletion.choices[0].message.content);
     const parsedPlacesObject = JSON.parse(placesChatCompletion.choices[0].message.content);
+
+    console.debug("[TripController - generate infoDetails] :: ", { parsedInfoObject });
 
     let placeDetails = [];
     const placesMap = (Array.isArray(parsedPlacesObject) ? parsedPlacesObject : parsedPlacesObject?.itinerary)?.flatMap(
       (place) => place.p
     );
-    console.debug("placesMap", placesMap);
+    console.debug("[TripController - generate placeDetails] :: ", { parsedPlacesObject });
+
     try {
-      placeDetails = await fetchPlacesDetails(placesMap, process.env.GOOGLE_API_KEY);
+      placeDetails = await fetchPlacesDetails(placesMap, process.env.GOOGLE_API_KEY, updateProgress);
     } catch (error) {
       console.error("Error fetching place details:", error);
     }
 
     //rating,user_ratings_total,international_phone_number,opening_hours,price_level,photo
     const places = parsedPlacesObject?.itinerary.map((place) => {
+      updateProgress("Generating places to visit...", 3);
+
       return {
         date: place.d,
         list: place.p.map((p) => {
@@ -183,7 +212,6 @@ module.exports.generate = async (req, res) => {
             name: p.n,
             address: p.a,
             coordinates: p.c,
-            description: p.i,
             userRatingsTotal: details?.user_ratings_total,
             internationalPhone: details?.international_phone_number,
             rating: details?.rating,
@@ -197,9 +225,15 @@ module.exports.generate = async (req, res) => {
 
     console.debug("[generate] :: ", { parsedPlacesObject, placeDetails, places });
 
+    let image = googleImage;
+    const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
+    if (existingDestination) {
+      image = `${req.protocol}://${req.headers.host}/uploads/destination/image/${existingDestination?.image}`;
+    }
+
     // Creating a new document in the collection
     const tripData = {
-      image: google_image,
+      image,
       language: languageId,
       name: destination.name,
       country: destination.country,
@@ -215,10 +249,13 @@ module.exports.generate = async (req, res) => {
       status: "upcoming",
     };
 
+    // Finalizing and saving the trip details
+    updateProgress("Finalizing details...", 5);
+
     const savedTrip = await new Trip(tripData).save();
     const result = await Trip.findById(savedTrip._id).populate("language").populate("traveler").populate("budget");
 
-    socket.emit("progress", { message: "Itinerary generation complete.", progress: 100 });
+    updateProgress("Itinerary generation complete.", 2);
 
     return res.status(200).json({
       success: true,
@@ -226,34 +263,36 @@ module.exports.generate = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    socket.emit("progress", { message: "Error generating itinerary", percent: progress });
     return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-module.exports.socketTest = async (req, res) => {
-  // const socketId = req.body.socketId;
-  // console.debug('socketId', socketId)
-  // const socket = io.of("/");
+module.exports.socketTest = (io) => {
+  return async (req, res) => {
+    const socketId = req.body.socketId;
+    const socket = io.to(socketId);
 
-  // Initial progress update
-  io.of("/").emit("progress", { message: "Starting itinerary generation...", progress: 0 });
+    // Initial progress update
+    socket.emit("progress", { message: "Started generating your trip...", percent: 0 });
 
-  // Generate summary and tips
-  io.of("/").emit("progress", { message: "Generating summary and tips...", progress: 25 });
+    // Generate summary and tips
+    socket.emit("progress", { message: "Generating summary and tips...", percent: 25 });
 
-  // Generate places to visit
-  io.of("/").emit("progress", { message: "Generating places to visit...", progress: 50 });
+    // Generate places to visit
+    socket.emit("progress", { message: "Generating places to visit...", percent: 50 });
 
-  // Parse info and places JSON objects
-  io.of("/").emit("progress", { message: "Finalizing details...", progress: 75 });
+    // Parse info and places JSON objects
+    socket.emit("progress", { message: "Finalizing details...", percent: 75 });
 
-  // Creating a new document in the collection
-  io.of("/").emit("progress", { message: "Itinerary generation complete.", progress: 100 });
+    // Creating a new document in the collection
+    socket.emit("progress", { message: "Itinerary generation complete.", percent: 100 });
 
-  return res.status(200).json({
-    success: true,
-    result: null,
-  });
+    return res.status(200).json({
+      success: true,
+      result: null,
+    });
+  };
 };
 
 module.exports.tripsByUser = async (req, res) => {

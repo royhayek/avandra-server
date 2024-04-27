@@ -13,10 +13,7 @@ const tripSchema = new Schema(
       ref: "Language",
       requred: true,
     },
-    flag: {
-      type: String,
-      required: true,
-    },
+    flag: String,
     name: {
       type: String,
       required: true,

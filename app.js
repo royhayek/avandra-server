@@ -8,9 +8,6 @@ const MongoStore = require("connect-mongo");
 const http = require("http");
 const { Server } = require("socket.io");
 
-const apiRouter = require("./src/routes/api");
-const publicApiRouter = require("./src/routes/publicApi");
-
 const errorHandlers = require("./src/handlers/errorHandlers");
 
 const { isValidToken } = require("./src/controllers/authController");
@@ -55,8 +52,6 @@ app.use(
 io.on("connection", (socket) => {
   console.log(`⚡: ${socket.id} user just connected!`);
 
-  socket.emit("progress", "Welcome to the Chat App!!");
-
   socket.on("disconnect", () => {
     console.log("🔥: A user disconnected");
   });
@@ -93,6 +88,9 @@ app.use(function (req, res, next) {
     return next();
   }
 });
+
+const apiRouter = require("./src/routes/api")(io);
+const publicApiRouter = require("./src/routes/publicApi");
 
 app.use("/api", publicApiRouter);
 

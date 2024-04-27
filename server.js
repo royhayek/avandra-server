@@ -33,3 +33,5 @@ const { server } = require("./app");
 server.listen(process.env.PORT || 80, () => {
   console.log(`Server running on port ${process.env.PORT || 3000}`);
 });
+
+module.exports = server;

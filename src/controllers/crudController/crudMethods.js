@@ -95,9 +95,7 @@ exports.createWithImage = async (Model, req, res) => {
     // Set up Multer to handle file uploads
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
-        const destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${
-          file.fieldname
-        }`;
+        const destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${file.fieldname}`;
         if (!fs.existsSync(destinationFolder)) {
           fs.mkdirSync(destinationFolder, { recursive: true });
           console.log(`Created "${destinationFolder}" directory.`);
@@ -106,10 +104,7 @@ exports.createWithImage = async (Model, req, res) => {
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(
-          null,
-          file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-        );
+        cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
       },
     });
 
@@ -131,11 +126,7 @@ exports.createWithImage = async (Model, req, res) => {
     // Creating a new document in the collection
 
     // Parse JSON fields in req.body (if needed)
-    if (
-      req.body &&
-      typeof req.body === "object" &&
-      Object.keys(req.body).length > 0
-    ) {
+    if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
       for (const key in req.body) {
         if (typeof req.body[key] === "string") {
           try {
@@ -151,10 +142,7 @@ exports.createWithImage = async (Model, req, res) => {
       ...req.body,
       image: req.files && req.files.image ? req.files.image[0].filename : null,
       flag: req.files && req.files.flag ? req.files.flag[0].filename : null,
-      gallery:
-        req.files && req.files.gallery
-          ? req.files.gallery.map((file) => file.filename)
-          : [],
+      gallery: req.files && req.files.gallery ? req.files.gallery.map((file) => file.filename) : [],
     }).save();
 
     // Returning a successful response
@@ -194,14 +182,10 @@ exports.update = async (Model, req, res) => {
     const modelName = Model.modelName;
 
     // Find a document by ID and update it with the required fields
-    const result = await Model.findOneAndUpdate(
-      { _id: req.params.id },
-      req.body,
-      {
-        new: true, // Return the new result instead of the old one
-        runValidators: true,
-      }
-    ).exec();
+    const result = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, {
+      new: true, // Return the new result instead of the old one
+      runValidators: true,
+    }).exec();
 
     return res.status(200).json({
       success: true,
@@ -243,9 +227,7 @@ exports.updateWithImage = async (Model, req, res) => {
 
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
-        let destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${
-          file.fieldname
-        }`;
+        let destinationFolder = `./public/uploads/${modelName.toLowerCase()}/${file.fieldname}`;
 
         if (!fs.existsSync(destinationFolder)) {
           fs.mkdirSync(destinationFolder, { recursive: true });
@@ -256,10 +238,7 @@ exports.updateWithImage = async (Model, req, res) => {
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(
-          null,
-          file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-        );
+        cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
       },
     });
 
@@ -280,11 +259,7 @@ exports.updateWithImage = async (Model, req, res) => {
     });
 
     // Parse JSON fields in req.body (if needed)
-    if (
-      req.body &&
-      typeof req.body === "object" &&
-      Object.keys(req.body).length > 0
-    ) {
+    if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
       for (const key in req.body) {
         if (typeof req.body[key] === "string") {
           try {
@@ -309,39 +284,27 @@ exports.updateWithImage = async (Model, req, res) => {
     }
 
     // Check if the image, flag, and gallery are provided in the request
-    const updatedImage =
-      req.files && req.files.image
-        ? req.files.image[0].filename
-        : existingDoc.image;
-    const updatedFlag =
-      req.files && req.files.flag
-        ? req.files.flag[0].filename
-        : existingDoc.flag;
+    const updatedImage = req.files && req.files.image ? req.files.image[0].filename : existingDoc.image;
+    const updatedFlag = req.files && req.files.flag ? req.files.flag[0].filename : existingDoc.flag;
     const updatedGallery =
-      req.files && req.files.gallery
-        ? req.files.gallery.map((file) => file.filename)
-        : existingDoc.gallery;
+      req.files && req.files.gallery ? req.files.gallery.map((file) => file.filename) : existingDoc.gallery;
     console.debug("req.files", req.files);
     console.debug("req.files.image", req.files.image);
     console.debug("req.files.gallery", req.files.gallery);
     console.debug("updatedGallery", updatedGallery);
     // Remove the old image, flag, and gallery if new ones are provided
-    if (existingDoc.image && req.files && req.files.image) {
+    if (existingDoc.image && req.files && req.files.image && !existingDoc.image.includes("http")) {
       const imagePath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/image/${
-          existingDoc.image
-        }`
+        `../../../public/uploads/${modelName.toLowerCase()}/image/${existingDoc.image}`
       );
       fs.unlinkSync(imagePath);
     }
 
-    if (existingDoc.flag && req.files && req.files.flag) {
+    if (existingDoc.flag && req.files && req.files.flag && !existingDoc.flag.includes("http")) {
       const flagPath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/flag/${
-          existingDoc.flag
-        }`
+        `../../../public/uploads/${modelName.toLowerCase()}/flag/${existingDoc.flag}`
       );
       fs.unlinkSync(flagPath);
     }
@@ -416,24 +379,17 @@ exports.delete = async (Model, req, res) => {
       });
     }
 
-    // Check and delete associated images
-    if (document.image) {
+    // Check and delete associated images and isn't a link
+    if (document.image && !document.image.includes("http")) {
       const imagePath = path.join(
         __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/image/${
-          document.image
-        }`
+        `../../../public/uploads/${modelName.toLowerCase()}/image/${document.image}`
       );
       fs.unlinkSync(imagePath);
     }
 
-    if (document.flag) {
-      const flagPath = path.join(
-        __dirname,
-        `../../../public/uploads/${modelName.toLowerCase()}/flag/${
-          document.flag
-        }`
-      );
+    if (document.flag && !typeof document.flag === "string" && !document.flag.includes("http")) {
+      const flagPath = path.join(__dirname, `../../../public/uploads/${modelName.toLowerCase()}/flag/${document.flag}`);
       fs.unlinkSync(flagPath);
     }
 
@@ -493,9 +449,7 @@ exports.list = async (Model, req, res) => {
     const languageId = await Language.findOne({ value: lang });
 
     // Start the query and dynamically apply population options
-    let model = languageId
-      ? Model.find({ language: languageId })
-      : Model.find();
+    let model = languageId ? Model.find({ language: languageId }) : Model.find();
     let query = model.skip(skip).limit(limit).sort({ created: "desc" });
 
     // Apply each population option to the query
@@ -505,9 +459,7 @@ exports.list = async (Model, req, res) => {
 
     // Execute the query with dynamic population
     const result = await query.exec();
-    const count = await Model.countDocuments(
-      languageId ? { language: languageId } : {}
-    );
+    const count = await Model.countDocuments(languageId ? { language: languageId } : {});
 
     // Calculate total pages
     const pages = Math.ceil(count / limit);
@@ -529,9 +481,7 @@ exports.list = async (Model, req, res) => {
     }
   } catch (error) {
     console.error(error); // Log the error for debugging
-    return res
-      .status(500)
-      .json({ success: false, data: [], message: "Oops, there is an error" });
+    return res.status(500).json({ success: false, data: [], message: "Oops, there is an error" });
   }
 };
 
