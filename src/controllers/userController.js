@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
+
 const User = mongoose.model("User");
+const Trip = mongoose.model("Trip");
+const Message = mongoose.model("Message");
 
 /**
  *  Get all documents of a Model
@@ -133,8 +136,7 @@ exports.create = async (req, res) => {
       return res.status(400).json({
         success: false,
         data: null,
-        message:
-          "Email or providerId (for social media sign-in) or password fields are missing.",
+        message: "Email or providerId (for social media sign-in) or password fields are missing.",
       });
     }
 
@@ -152,9 +154,7 @@ exports.create = async (req, res) => {
       return res.status(400).json({
         success: false,
         data: null,
-        message: `An account already exists with this ${
-          providerId ? "providerId" : "email"
-        }`,
+        message: `An account already exists with this ${providerId ? "providerId" : "email"}`,
       });
     }
 
@@ -255,17 +255,12 @@ exports.update = async (req, res) => {
         return res.status(400).json({
           success: false,
           result: null,
-          message:
-            "An account already exists with this email, please use another one.",
+          message: "An account already exists with this email, please use another one.",
         });
       }
     }
 
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: req.params.id },
-      { $set: req.body },
-      { new: true }
-    ).exec();
+    const updatedUser = await User.findOneAndUpdate({ _id: req.params.id }, { $set: req.body }, { new: true }).exec();
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -294,8 +289,7 @@ exports.updatePassword = async (req, res) => {
   try {
     let { password } = req.body;
 
-    if (!password)
-      return res.status(400).json({ msg: "Not all fields have been entered." });
+    if (!password) return res.status(400).json({ msg: "Not all fields have been entered." });
 
     if (password.length < 8)
       return res.status(400).json({
@@ -355,6 +349,7 @@ exports.delete = async (req, res) => {
     };
     // Find the document by id and delete it
     const result = await User.findOneAndDelete({ _id: req.params.id }).exec();
+
     // If no results found, return document not found
     if (!result) {
       return res.status(404).json({
@@ -363,6 +358,10 @@ exports.delete = async (req, res) => {
         message: "No User found with this id: " + req.params.id,
       });
     } else {
+      // If user was found and deleted, delete all related trips and messages
+      await Trip.deleteMany({ user: req.params.id });
+      await Message.deleteMany({ user: req.params.id });
+
       return res.status(200).json({
         success: true,
         result,
@@ -383,11 +382,7 @@ exports.search = async (req, res) => {
   // console.log(req.query.fields)
 
   try {
-    if (
-      req.query.q === undefined ||
-      req.query.q === "" ||
-      req.query.q === " "
-    ) {
+    if (req.query.q === undefined || req.query.q === "" || req.query.q === " ") {
       return res
         .status(202)
         .json({
@@ -405,10 +400,7 @@ exports.search = async (req, res) => {
     for (const field of fieldsArray) {
       fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, "i") } });
     }
-    let result = await User.find(fields)
-      .where("removed", false)
-      .sort({ name: "asc" })
-      .limit(10);
+    let result = await User.find(fields).where("removed", false).sort({ name: "asc" }).limit(10);
 
     if (result.length >= 1) {
       return res.status(200).json({

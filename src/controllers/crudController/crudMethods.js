@@ -288,10 +288,7 @@ exports.updateWithImage = async (Model, req, res) => {
     const updatedFlag = req.files && req.files.flag ? req.files.flag[0].filename : existingDoc.flag;
     const updatedGallery =
       req.files && req.files.gallery ? req.files.gallery.map((file) => file.filename) : existingDoc.gallery;
-    console.debug("req.files", req.files);
-    console.debug("req.files.image", req.files.image);
-    console.debug("req.files.gallery", req.files.gallery);
-    console.debug("updatedGallery", updatedGallery);
+   
     // Remove the old image, flag, and gallery if new ones are provided
     if (existingDoc.image && req.files && req.files.image && !existingDoc.image.includes("http")) {
       const imagePath = path.join(

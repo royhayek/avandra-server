@@ -7,6 +7,7 @@ module.exports = function (io) {
   const faqController = require("../controllers/faqController");
   const tripController = require("../controllers/tripController");
   const userController = require("../controllers/userController");
+  const searchController = require("../controllers/searchController");
   const configController = require("../controllers/configController");
   const budgetController = require("../controllers/budgetController");
   const articleController = require("../controllers/articleController");
@@ -41,6 +42,9 @@ module.exports = function (io) {
   router.route("/destination/update/:id").patch(catchErrors(destinationController.updateWithImage));
   router.route("/destination/delete/:id").delete(catchErrors(destinationController.delete));
   router.route("/destination/list").get(catchErrors(destinationController.list));
+
+  router.route("/search/increment").post(catchErrors(searchController.increment));
+  router.route("/search/recent").get(catchErrors(searchController.recent));
 
   router.route("/walkthrough/create").post(catchErrors(walkthroughController.createWithImage));
   router.route("/walkthrough/read/:id").get(catchErrors(walkthroughController.read));
