@@ -14,7 +14,7 @@ module.exports.increment = async (req, res) => {
       await search.save();
       return res.status(200).json({ success: true, data: search });
     } else {
-      const newSearch = new Search({ name: city, country, count: 1 });
+      const newSearch = new Search({ name, country, count: 1 });
       await newSearch.save();
       return res.status(201).json({ success: true, data: newSearch });
     }
