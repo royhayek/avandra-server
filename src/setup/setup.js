@@ -2,6 +2,8 @@ require("dotenv").config({ path: __dirname + "/../../.env" });
 const fs = require("fs");
 
 const mongoose = require("mongoose");
+const Settings = require("../models/Settings");
+
 mongoose.connect(process.env.DATABASE);
 mongoose.Promise = global.Promise; // Tell Mongoose to use ES6 promises
 
@@ -34,6 +36,18 @@ mongoose.Promise = global.Promise; // Tell Mongoose to use ES6 promises
 //   }
 // }
 
+async function initializeSettings() {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({});
+      console.log("Default settings initialized.");
+    }
+  } catch (error) {
+    console.error("Failed to initialize settings:", error);
+  }
+}
+
 async function createAdmin() {
   try {
     const Admin = require("../models/Admin");
@@ -53,7 +67,10 @@ async function createAdmin() {
     process.exit();
   }
 }
+
+initializeSettings();
 createAdmin();
+
 // if (process.argv.includes("--delete")) {
 //   deleteData();
 // } else {

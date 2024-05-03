@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 
 const User = mongoose.model("User");
 
+const { sendEmail } = require("../helpers");
 require("dotenv").config({ path: ".env" });
 
 const generateJwtToken = (id) =>
@@ -18,17 +19,7 @@ const generateJwtToken = (id) =>
 
 exports.register = async (req, res) => {
   try {
-    let {
-      email,
-      name,
-      image,
-      role,
-      gender,
-      password,
-      passwordCheck,
-      provider,
-      providerId,
-    } = req.body;
+    let { email, name, image, role, gender, password, passwordCheck, provider, providerId } = req.body;
 
     const isSocialSignIn = providerId;
     const isLocalSignIn = email && !providerId;
@@ -46,15 +37,11 @@ exports.register = async (req, res) => {
     }
 
     if (!isSocialSignIn && password && password.length < 5) {
-      return res
-        .status(400)
-        .json({ msg: "The password needs to be at least 5 characters long." });
+      return res.status(400).json({ msg: "The password needs to be at least 5 characters long." });
     }
 
     if (!isSocialSignIn && password && password !== passwordCheck) {
-      return res
-        .status(400)
-        .json({ msg: "Enter the same password twice for verification." });
+      return res.status(400).json({ msg: "Enter the same password twice for verification." });
     }
 
     let existingUser;
@@ -87,10 +74,7 @@ exports.register = async (req, res) => {
       gender,
       provider,
       photo: image,
-      providerId:
-        isSocialSignIn && providerId !== null && providerId !== undefined
-          ? providerId
-          : undefined,
+      providerId: isSocialSignIn && providerId !== null && providerId !== undefined ? providerId : undefined,
     });
 
     if (!isSocialSignIn && password) {
@@ -102,6 +86,22 @@ exports.register = async (req, res) => {
     const savedUser = await newUser.save();
 
     const token = generateJwtToken(savedUser._id);
+
+    if (isLocalSignIn) {
+      try {
+        await sendEmail({
+          from: '"Wondrous" <no-reply@nextgenappsdev.com>',
+          to: savedUser.email,
+          subject: "Welcome to Our App!",
+          text: `Hi ${name}, welcome to our application!`,
+          html: `<b>Hi ${name}</b>, welcome to our application!`,
+        });
+
+        console.error(`User registered and email sent to ${email}!`);
+      } catch (error) {
+        console.error("Error in user registration or sending email");
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -122,8 +122,7 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // validate
-    if (!email || !password)
-      return res.status(400).json({ msg: "Not all fields have been entered." });
+    if (!email || !password) return res.status(400).json({ msg: "Not all fields have been entered." });
 
     const admin = await User.findOne({ email: email });
     // console.log(admin);

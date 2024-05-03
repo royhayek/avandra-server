@@ -28,6 +28,7 @@
     "mongoose-autopopulate": "^0.14.0",
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.13",
     "openai": "^4.38.0",
     "pino": "^7.9.0",
     "pino-pretty": "^7.5.4",
