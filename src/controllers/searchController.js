@@ -7,7 +7,9 @@ module.exports.increment = async (req, res) => {
 
   try {
     const { name, country } = req.body;
+    console.debug('name', country)
     const search = await Search.findOne({ name, country });
+    console.debug('search', search)
 
     if (search) {
       search.count++;

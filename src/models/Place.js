@@ -7,6 +7,10 @@ mongoose.Promise = global.Promise;
 
 const placeSchema = new Schema({
   // image: String,
+  order: {
+    type: Number,
+    required: true,
+  },
   name: {
     type: String,
     required: true,

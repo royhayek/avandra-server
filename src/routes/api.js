@@ -102,6 +102,11 @@ module.exports = function (io) {
   router.route("/trip/delete/:id").delete(catchErrors(tripController.delete));
   router.route("/trip/list").get(catchErrors(tripController.list));
   router.route("/trip/list/user/:id").get(catchErrors(tripController.tripsByUser));
+  router.route("/trip/additional/:id").post(catchErrors(tripController.saveAdditional));
+  router.route("/trip/places/:id").get(catchErrors(tripController.readTripPlaces));
+  router.route("/trip/place/:id/:placeId/:date").delete(catchErrors(tripController.deletePlace));
+  router.route("/trip/places/:id").patch(catchErrors(tripController.updateTripPlaces));
+  router.route("/trip/places/popular/:id").get(catchErrors(tripController.getPopularPlaces));
 
   router.route("/settings/create").post(catchErrors(settingsController.create));
   router.route("/settings/read/:id").get(catchErrors(settingsController.read));

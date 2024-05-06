@@ -54,7 +54,7 @@ const findPlaceId = async (placeName, placeAddress, apiKey) => {
   )}&inputtype=textquery&fields=place_id&key=${apiKey}`;
   const response = await fetch(url);
   const data = await response.json();
-  console.debug("[findPlaceId] :: ", { placeName, placeAddress });
+
   return data.candidates.length > 0 ? data.candidates[0].place_id : null;
 };
 
@@ -69,7 +69,7 @@ const getPlaceDetailsAndPhoto = async (placeId, fields, apiKey) => {
 
   const photoReference = data.result.photos[0].photo_reference;
   const photo_url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1024&photoreference=${photoReference}&key=${apiKey}`;
-  console.debug("[getPlaceDetailsAndPhoto] :: ", { placeId, fields, photo_url });
+
   return { ...data.result, photo_url };
 };
 
@@ -88,7 +88,6 @@ const fetchPlacesDetails = async (places, apiKey, updateProgress) => {
       "rating,user_ratings_total,international_phone_number,opening_hours,price_level,photo",
       apiKey
     );
-    console.debug("[fetchPlacesDetails - placeId]", { placeId, place, details });
 
     updateProgress("Generating places to visit...", 1);
 
@@ -149,7 +148,7 @@ module.exports.generate = (io) => async (req, res) => {
 
     updateProgress("Generating summary and tips...", 2);
 
-    const infoPrompt = `Provide a brief summary, a few tips (array of string), and a country flag for a trip to ${destination?.name}, ${destination?.country} in JSON format`;
+    const infoPrompt = `Provide a brief summary, a few tips (array of string), a country flag for a trip to ${destination?.name}, ${destination?.country}, and location (city center coordinates lat and lng) in JSON format`;
     console.debug("[TripController - generate info prompt] :: ", infoPrompt);
 
     const infoChatCompletion = await generateCompletion(infoPrompt, "gpt-3.5-turbo-1106");
@@ -168,7 +167,7 @@ module.exports.generate = (io) => async (req, res) => {
       ` Focusing on ${interests} ` +
       `with a ${chosenBudget?.title} budget. ` +
       "Include three meals daily and three interest-based activities. " +
-      "Format: [{ 'd': '', 'p': [{ 't': '',  'n': '', 'a': '', 'c': { 'lat': '', 'lng': '' }} ]}]. " +
+      "Format: [{'d':'','p':[{'t':'','n':'','a':'','c':{'lat':'','lng':''}}]}]. " +
       "d: date, p: places (array), t: type (restaurant/landmark), n: name, a: address, c: coordinates";
 
     console.debug("[TripController - generate places prompt] :: ", placesPrompt);
@@ -185,13 +184,10 @@ module.exports.generate = (io) => async (req, res) => {
     const parsedInfoObject = JSON.parse(infoChatCompletion.choices[0].message.content);
     const parsedPlacesObject = JSON.parse(placesChatCompletion.choices[0].message.content);
 
-    console.debug("[TripController - generate infoDetails] :: ", { parsedInfoObject });
-
     let placeDetails = [];
     const placesMap = (Array.isArray(parsedPlacesObject) ? parsedPlacesObject : parsedPlacesObject?.itinerary)?.flatMap(
       (place) => place.p
     );
-    console.debug("[TripController - generate placeDetails] :: ", { parsedPlacesObject });
 
     try {
       placeDetails = await fetchPlacesDetails(placesMap, process.env.GOOGLE_API_KEY, updateProgress);
@@ -205,9 +201,10 @@ module.exports.generate = (io) => async (req, res) => {
 
       return {
         date: place.d,
-        list: place.p.map((p) => {
+        list: place.p.map((p, i) => {
           const details = placeDetails.find((detail) => detail.n === p.n && detail.a === p.a)?.details;
           return {
+            order: i,
             type: p.t,
             name: p.n,
             address: p.a,
@@ -223,8 +220,6 @@ module.exports.generate = (io) => async (req, res) => {
       };
     });
 
-    console.debug("[generate] :: ", { parsedPlacesObject, placeDetails, places });
-
     let image = googleImage;
     const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
     if (existingDestination) {
@@ -233,20 +228,21 @@ module.exports.generate = (io) => async (req, res) => {
 
     // Creating a new document in the collection
     const tripData = {
+      user,
       image,
+      toDate,
+      budget,
+      places,
+      fromDate,
+      traveler,
+      status: "upcoming",
       language: languageId,
       name: destination.name,
       country: destination.country,
       flag: parsedInfoObject.flag,
       tips: parsedInfoObject.tips,
+      location: parsedInfoObject.location,
       description: parsedInfoObject.summary,
-      fromDate,
-      toDate,
-      traveler,
-      budget,
-      user,
-      places,
-      status: "upcoming",
     };
 
     // Finalizing and saving the trip details
@@ -316,6 +312,135 @@ module.exports.tripsByUser = async (req, res) => {
     return res.status(200).json({
       success: true,
       result: trips,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.readTripPlaces = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trip = await Trip.findById(id).select("places");
+
+    return res.status(200).json({
+      success: true,
+      result: trip.places,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.saveAdditional = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // console.debug("id", id);
+    // console.debug("req.params", req.params);
+    // const { gallery } = req.body;
+    // console.debug("req.body", req.body);
+
+    // get itineraries of a trip by its id and add to it the array of places coming from req.body
+    const { date, list } = req.body;
+
+    const currentTripPlaces = await Trip.findById(id).select("places");
+    const currentDayPlaces = currentTripPlaces.places.find((place) => place.date === date)?.list;
+    // console.debug("currentDayPlaces", currentDayPlaces);
+
+    const newlyAddedPlaces = list.map((place, index) => ({
+      order: currentDayPlaces?.length + index,
+      name: place?.name,
+      rating: place?.rating,
+      priceLevel: place?.price_level,
+      address: place?.formatted_address,
+      openingHours: place?.opening_hours,
+      userRatingsTotal: place?.user_ratings_total,
+      description: place?.editorial_summary?.overview,
+      internationalPhone: place?.international_phone_number,
+      type: place?.type?.includes("restaurant") ? "restaurant" : "landmark",
+      coordinates: { lat: place?.geometry?.location?.lat, lng: place?.geometry?.location?.lng },
+      photoUrl: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1024&photoreference=${place?.photos[0]?.photo_reference}&key=${process.env.GOOGLE_API_KEY}`,
+    }));
+
+    const formattedPlaces = [...currentDayPlaces, ...newlyAddedPlaces];
+
+    currentTripPlaces.places[currentTripPlaces.places.findIndex((place) => place.date === date)].list = formattedPlaces;
+    await currentTripPlaces.save();
+
+    return res.status(200).json({
+      success: true,
+      result: formattedPlaces,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.deletePlace = async (req, res) => {
+  try {
+    const { id, placeId, date } = req.params;
+
+    const currentTripPlaces = await Trip.findById(id).select("places");
+    const currentDayPlaces = currentTripPlaces.places.find((place) => place.date === date)?.list;
+
+    const updatedPlaces = currentDayPlaces.filter((place) => place._id.toString() !== placeId);
+
+    currentTripPlaces.places[currentTripPlaces.places.findIndex((place) => place.date === date)].list = updatedPlaces;
+    await currentTripPlaces.save();
+
+    return res.status(200).json({
+      success: true,
+      result: currentTripPlaces,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.updateTripPlaces = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { places } = req.body;
+
+    const currentTripPlaces = await Trip.findById(id).select("places");
+    console.debug("[updateTripPlaces] :: ", places);
+    currentTripPlaces.places = places;
+    await currentTripPlaces.save();
+
+    return res.status(200).json({
+      success: true,
+      result: currentTripPlaces,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.getPopularPlaces = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const apiKey = process.env.GOOGLE_API_KEY; // Replace with your actual API key
+    const radius = 5000; // Radius in meters
+    const type = "establishment"; // Type to filter places
+
+    const trip = await Trip.findById(id).select("location");
+    const { lat, lng } = trip.location;
+
+    // Construct API URL
+    const apiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${apiKey}&rankby=prominence&type=${type}`;
+
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    const places = data.results;
+
+    return res.status(200).json({
+      success: true,
+      result: places,
     });
   } catch (err) {
     console.error(err);

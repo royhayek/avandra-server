@@ -52,8 +52,8 @@ const tripSchema = new Schema(
     currency: String,
     gallery: [String],
     location: {
-      latitude: Number,
-      longitude: Number,
+      type: Object,
+      required: true,
     },
     places: [PlacesList.schema],
     itineraries: [ItineraryList.schema],
