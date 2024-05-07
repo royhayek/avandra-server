@@ -1,3 +1,4 @@
+const axios = require('axios');
 const OpenAI = require("openai");
 const mongoose = require("mongoose");
 const wss = require("../../websocket");
@@ -204,7 +205,6 @@ module.exports.generate = (io) => async (req, res) => {
         list: place.p.map((p, i) => {
           const details = placeDetails.find((detail) => detail.n === p.n && detail.a === p.a)?.details;
           return {
-            order: i,
             type: p.t,
             name: p.n,
             address: p.a,
@@ -337,34 +337,12 @@ module.exports.readTripPlaces = async (req, res) => {
 module.exports.saveAdditional = async (req, res) => {
   try {
     const { id } = req.params;
-    // console.debug("id", id);
-    // console.debug("req.params", req.params);
-    // const { gallery } = req.body;
-    // console.debug("req.body", req.body);
-
-    // get itineraries of a trip by its id and add to it the array of places coming from req.body
     const { date, list } = req.body;
 
     const currentTripPlaces = await Trip.findById(id).select("places");
     const currentDayPlaces = currentTripPlaces.places.find((place) => place.date === date)?.list;
-    // console.debug("currentDayPlaces", currentDayPlaces);
 
-    const newlyAddedPlaces = list.map((place, index) => ({
-      order: currentDayPlaces?.length + index,
-      name: place?.name,
-      rating: place?.rating,
-      priceLevel: place?.price_level,
-      address: place?.formatted_address,
-      openingHours: place?.opening_hours,
-      userRatingsTotal: place?.user_ratings_total,
-      description: place?.editorial_summary?.overview,
-      internationalPhone: place?.international_phone_number,
-      type: place?.type?.includes("restaurant") ? "restaurant" : "landmark",
-      coordinates: { lat: place?.geometry?.location?.lat, lng: place?.geometry?.location?.lng },
-      photoUrl: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1024&photoreference=${place?.photos[0]?.photo_reference}&key=${process.env.GOOGLE_API_KEY}`,
-    }));
-
-    const formattedPlaces = [...currentDayPlaces, ...newlyAddedPlaces];
+    const formattedPlaces = [...currentDayPlaces, ...list];
 
     currentTripPlaces.places[currentTripPlaces.places.findIndex((place) => place.date === date)].list = formattedPlaces;
     await currentTripPlaces.save();
@@ -425,25 +403,64 @@ module.exports.getPopularPlaces = async (req, res) => {
   try {
     const { id } = req.params;
     const apiKey = process.env.GOOGLE_API_KEY; // Replace with your actual API key
-    const radius = 5000; // Radius in meters
-    const type = "establishment"; // Type to filter places
+    const types = ["restaurant", "bar", "cafe", "park", "museum", "shopping_mall"]; // Type to filter places
+    const radius = 500.0; // Radius in meters
+    const maxResultCount = 10; // Limit the number of results to 10
 
     const trip = await Trip.findById(id).select("location");
     const { lat, lng } = trip.location;
 
-    // Construct API URL
-    const apiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${apiKey}&rankby=prominence&type=${type}`;
+    const apiUrl = "https://places.googleapis.com/v1/places:searchNearby";
 
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    const places = data.results;
+    // Construct request body
+    const requestBody = {
+      includedTypes: types,
+      maxResultCount,
+      locationRestriction: {
+        circle: {
+          center: {
+            latitude: lat,
+            longitude: lng,
+          },
+          radius,
+        },
+      },
+      rankPreference: "POPULARITY",
+    };
+
+    // Make POST request to Nearby Search (New) API
+    const response = await axios.post(apiUrl, requestBody, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": "***REMOVED***",
+        "X-Goog-FieldMask":
+          "places.displayName,places.location,places.id,places.rating,places.internationalPhoneNumber,places.editorialSummary,places.formattedAddress,places.currentOpeningHours,places.photos,places.userRatingCount,places.priceLevel,places.types",
+      },
+    });
+
+    // Extract places from the response
+    const places = response.data.places;
+    const formattedPlaces = places.map((place, index) => ({
+      placeId: place?.id,
+      name: place?.displayName?.text,
+      rating: place?.rating,
+      priceLevel: place?.priceLevel,
+      address: place?.formattedAddress,
+      openingHours: place?.currentOpeningHours?.weekdayDescriptions,
+      userRatingsTotal: place?.userRatingCount,
+      description: place?.editorialSummary?.text,
+      internationalPhone: place?.internationalPhoneNumber,
+      type: place?.types.includes("restaurant") ? "restaurant" : "landmark",
+      coordinates: { lat: place?.location.latitude, lng: place?.location.longitude },
+      photoUrl: `https://places.googleapis.com/v1/${place?.photos[0].name}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`,
+    }));
 
     return res.status(200).json({
       success: true,
-      result: places,
+      result: formattedPlaces,
     });
   } catch (err) {
-    console.error(err);
+    // console.error("Error fetching popular establishment places:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };
