@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "DVGN5DN5ST.com.nextgenappsdev.trippify",
+        "paths": [
+          "*"
+        ]
+      }
+    ]
+  }
+}

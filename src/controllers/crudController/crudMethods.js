@@ -14,8 +14,12 @@ const Language = mongoose.model("Language");
  */
 exports.read = async (Model, req, res) => {
   try {
+    // Generate population options based on the Model schema
+    const populationOptions = generatePopulationOptions(Model);
+
     // Find a document by ID
-    const result = await Model.findOne({ _id: req.params.id });
+    const result = await Model.findOne({ _id: req.params.id }).populate(populationOptions);
+
     // If no results are found, return a document not found message
     if (!result) {
       return res.status(404).json({
@@ -32,6 +36,7 @@ exports.read = async (Model, req, res) => {
       });
     }
   } catch (err) {
+    console.debug("err", err);
     // Server Error
     return res.status(500).json({
       success: false,
@@ -288,7 +293,7 @@ exports.updateWithImage = async (Model, req, res) => {
     const updatedFlag = req.files && req.files.flag ? req.files.flag[0].filename : existingDoc.flag;
     const updatedGallery =
       req.files && req.files.gallery ? req.files.gallery.map((file) => file.filename) : existingDoc.gallery;
-   
+
     // Remove the old image, flag, and gallery if new ones are provided
     if (existingDoc.image && req.files && req.files.image && !existingDoc.image.includes("http")) {
       const imagePath = path.join(
@@ -382,12 +387,20 @@ exports.delete = async (Model, req, res) => {
         __dirname,
         `../../../public/uploads/${modelName.toLowerCase()}/image/${document.image}`
       );
-      fs.unlinkSync(imagePath);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      } else {
+        console.log("No such file exists:", imagePath);
+      }
     }
 
     if (document.flag && !typeof document.flag === "string" && !document.flag.includes("http")) {
       const flagPath = path.join(__dirname, `../../../public/uploads/${modelName.toLowerCase()}/flag/${document.flag}`);
-      fs.unlinkSync(flagPath);
+      if (fs.existsSync(flagPath)) {
+        fs.unlinkSync(flagPath);
+      } else {
+        console.log("No such file exists:", flagPath);
+      }
     }
 
     if (document.gallery && document.gallery.length > 0) {
@@ -396,7 +409,11 @@ exports.delete = async (Model, req, res) => {
           __dirname,
           `../../../public/uploads/${modelName.toLowerCase()}/gallery/${galleryImage}`
         );
-        fs.unlinkSync(galleryPath);
+        if (fs.existsSync(galleryPath)) {
+          fs.unlinkSync(galleryPath);
+        } else {
+          console.log("No such file exists:", galleryPath);
+        }
       });
     }
 

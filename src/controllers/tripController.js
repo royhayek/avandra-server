@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require("axios");
 const OpenAI = require("openai");
 const mongoose = require("mongoose");
 const wss = require("../../websocket");
@@ -100,20 +100,49 @@ const fetchPlacesDetails = async (places, apiKey, updateProgress) => {
 
 module.exports.generate = (io) => async (req, res) => {
   try {
+    const regenerating = req.body.regenerate;
+    const tripId = req.body._id;
+    let tripData;
+
+    // if Regenerating, take the payload from the existing trip and format data
+    if (regenerating) {
+      const trip = await Trip.findById(tripId)
+        .populate("language")
+        .populate("payload.traveler")
+        .populate("payload.budget");
+
+      if (!trip) {
+        return res.status(404).send("Trip not found");
+      }
+
+      // Extract the necessary fields from the trip object
+      const { user, payload: tripPayload } = trip;
+      const { name, country, byDate, duration, fromDate, toDate, selectedMonth, traveler, budget, interests } =
+        tripPayload;
+
+      tripData = {
+        user,
+        destination: {
+          name,
+          country,
+        },
+        byDate,
+        fromDate,
+        toDate,
+        duration,
+        selectedMonth,
+        traveler: traveler?._id,
+        budget: budget?._id,
+        interests,
+      };
+    } else {
+      tripData = req.body;
+    }
+
     // Get request body
-    const {
-      user,
-      destination,
-      country,
-      byDate,
-      fromDate,
-      toDate,
-      duration,
-      selectedMonth,
-      traveler,
-      budget,
-      interests,
-    } = req.body;
+
+    const { user, destination, byDate, fromDate, toDate, duration, selectedMonth, traveler, budget, interests } =
+      tripData;
     const lang = req.headers["accept-language"];
     const languageId = await Language.findOne({ value: lang });
 
@@ -223,22 +252,30 @@ module.exports.generate = (io) => async (req, res) => {
     let image = googleImage;
     const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
     if (existingDestination) {
-      image = `${req.protocol}://${req.headers.host}/uploads/destination/image/${existingDestination?.image}`;
+      image = existingDestination?.image;
     }
 
     // Creating a new document in the collection
-    const tripData = {
-      user,
-      image,
-      toDate,
-      budget,
-      places,
-      fromDate,
-      traveler,
-      status: "upcoming",
-      language: languageId,
+    const payload = {
       name: destination.name,
       country: destination.country,
+      traveler,
+      fromDate,
+      toDate,
+      byDate,
+      selectedMonth,
+      duration,
+      interests,
+      budget,
+    };
+
+    const data = {
+      payload,
+      user,
+      image,
+      places,
+      status: "upcoming",
+      language: languageId,
       flag: parsedInfoObject.flag,
       tips: parsedInfoObject.tips,
       location: parsedInfoObject.location,
@@ -248,14 +285,18 @@ module.exports.generate = (io) => async (req, res) => {
     // Finalizing and saving the trip details
     updateProgress("Finalizing details...", 5);
 
-    const savedTrip = await new Trip(tripData).save();
-    const result = await Trip.findById(savedTrip._id).populate("language").populate("traveler").populate("budget");
+    const savedTrip =
+      regenerating && tripId
+        ? await Trip.findByIdAndUpdate(tripId, data, { new: true }) // Update existing trip
+        : await new Trip(data).save(); // Store new trip
 
     updateProgress("Itinerary generation complete.", 2);
 
     return res.status(200).json({
       success: true,
-      result,
+      result: {
+        _id: savedTrip?._id,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -294,14 +335,17 @@ module.exports.socketTest = (io) => {
 module.exports.tripsByUser = async (req, res) => {
   try {
     const user = req.params.id;
-    const trips = await Trip.find({ user }).populate("language").populate("traveler").populate("budget");
+    const trips = await Trip.find({ user })
+      .populate("language")
+      .populate("payload.traveler")
+      .populate("payload.budget");
 
     // Check if today is between one of the trip dates (fromDate and toDate), if yes make modify its status to "active"
     // and if today exceeds toDate, make its status "expired"
     const today = new Date();
     trips.forEach((trip) => {
-      const fromDate = new Date(trip.fromDate);
-      const toDate = new Date(trip.toDate);
+      const fromDate = new Date(trip.payload.fromDate);
+      const toDate = new Date(trip.payload.toDate);
       if (today >= fromDate && today <= toDate) {
         trip.status = "active";
       } else if (today > toDate) {
@@ -385,7 +429,6 @@ module.exports.updateTripPlaces = async (req, res) => {
     const { places } = req.body;
 
     const currentTripPlaces = await Trip.findById(id).select("places");
-    console.debug("[updateTripPlaces] :: ", places);
     currentTripPlaces.places = places;
     await currentTripPlaces.save();
 
@@ -432,7 +475,7 @@ module.exports.getPopularPlaces = async (req, res) => {
     const response = await axios.post(apiUrl, requestBody, {
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": "***REMOVED***",
+        "X-Goog-Api-Key": process.env.GOOGLE_API_KEY,
         "X-Goog-FieldMask":
           "places.displayName,places.location,places.id,places.rating,places.internationalPhoneNumber,places.editorialSummary,places.formattedAddress,places.currentOpeningHours,places.photos,places.userRatingCount,places.priceLevel,places.types",
       },
@@ -452,15 +495,33 @@ module.exports.getPopularPlaces = async (req, res) => {
       internationalPhone: place?.internationalPhoneNumber,
       type: place?.types.includes("restaurant") ? "restaurant" : "landmark",
       coordinates: { lat: place?.location.latitude, lng: place?.location.longitude },
-      photoUrl: `https://places.googleapis.com/v1/${place?.photos[0].name}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`,
+      photoUrl: `https://places.googleapis.com/v1/${place?.photos?.[0].name}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`,
     }));
 
+    console.debug("formattedPlaces", formattedPlaces);
     return res.status(200).json({
       success: true,
       result: formattedPlaces,
     });
   } catch (err) {
     // console.error("Error fetching popular establishment places:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.getTripById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const trip = await Trip.findById(id).populate("language").populate("payload.traveler").populate("payload.budget");
+
+    if (!trip) {
+      return res.status(404).json({ success: false, error: "Trip not found" });
+    }
+
+    return res.status(200).json({ success: true, result: trip });
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

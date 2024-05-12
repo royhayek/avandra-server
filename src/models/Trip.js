@@ -14,31 +14,48 @@ const tripSchema = new Schema(
       requred: true,
     },
     flag: String,
-    name: {
-      type: String,
-      required: true,
-    },
-    country: {
-      type: String,
-      required: true,
-    },
-    fromDate: {
-      type: String,
-      required: true,
-    },
-    toDate: {
-      type: String,
-      required: true,
-    },
-    traveler: {
-      type: Schema.Types.ObjectId,
-      ref: "Traveler",
-      required: true,
-    },
-    budget: {
-      type: Schema.Types.ObjectId,
-      ref: "Budget",
-      required: true,
+    payload: {
+      name: {
+        type: String,
+        required: true,
+      },
+      country: {
+        type: String,
+        required: true,
+      },
+      traveler: {
+        type: Schema.Types.ObjectId,
+        ref: "Traveler",
+        required: true,
+      },
+      fromDate: {
+        type: String,
+        required: true,
+      },
+      toDate: {
+        type: String,
+        required: true,
+      },
+      byDate: {
+        type: Boolean,
+        required: true,
+      },
+      selectedMonth: {
+        type: String,
+      },
+      duration: {
+        type: Number,
+        required: true,
+      },
+      interests: {
+        type: String,
+        required: true,
+      },
+      budget: {
+        type: Schema.Types.ObjectId,
+        ref: "Budget",
+        required: true,
+      },
     },
     user: {
       type: Schema.Types.ObjectId,

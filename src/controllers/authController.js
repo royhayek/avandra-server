@@ -192,6 +192,7 @@ exports.isValidToken = async (req, res, next) => {
       });
 
     const verified = jwt.verify(token, process.env.JWT_SECRET);
+
     if (!verified)
       return res.status(401).json({
         success: false,
@@ -213,12 +214,11 @@ exports.isValidToken = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Admin is already logout try to login, authorization denied.",
+        message: "Admin is already logged out try to login, authorization denied.",
         jwtExpired: true,
       });
     else {
       req.admin = admin;
-      // console.log(req.admin);
       next();
     }
   } catch (err) {
@@ -241,4 +241,21 @@ exports.logout = async (req, res) => {
   ).exec();
 
   res.status(200).json({ isLoggedIn: result.isLoggedIn });
+};
+
+exports.validateToken = async (req, res) => {
+  try {
+    const token = req.header("x-auth-token");
+    if (!token) return res.json(false);
+
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    if (!verified) return res.json(false);
+
+    const user = await User.findById(verified.id);
+    if (!user) return res.json(false);
+
+    return res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    res.status(500).json({ success: false, data: null, message: err.message });
+  }
 };

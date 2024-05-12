@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nextgenappsdev.trippify",
+      "sha256_cert_fingerprints": [
+        "17:2C:B7:63:66:13:03:14:8A:AB:50:0F:3A:15:4B:4D:03:9F:0C:8A:71:2E:2F:7F:80:5B:8D:C7:83:E8:4D:30"
+      ]
+    }
+  }
+]

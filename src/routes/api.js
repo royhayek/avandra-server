@@ -97,7 +97,7 @@ module.exports = function (io) {
   router.route("/trip/socketTest").post(catchErrors(tripController.socketTest(io)));
   router.route("/trip/generate").post(catchErrors(tripController.generate(io)));
   router.route("/trip/create").post(catchErrors(tripController.createWithImage));
-  router.route("/trip/read/:id").get(catchErrors(tripController.read));
+  router.route("/trip/read/:id").get(catchErrors(tripController.getTripById));
   router.route("/trip/update/:id").patch(catchErrors(tripController.updateWithImage));
   router.route("/trip/delete/:id").delete(catchErrors(tripController.delete));
   router.route("/trip/list").get(catchErrors(tripController.list));
