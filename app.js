@@ -25,6 +25,10 @@ const io = new Server(server, {
 
 // Serve static files from the 'public' director.
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/.well-known", express.static(path.join(__dirname, ".well-known")));
+app.get("/.well-known/apple-app-site-association", (req, res) => {
+  res.sendFile(path.join(__dirname, ".well-known/apple-app-site-association"));
+});
 
 // Takes the raw requests and turns them into usable properties on req.body
 app.use(bodyParser.json());
