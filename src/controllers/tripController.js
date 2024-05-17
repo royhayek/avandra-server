@@ -181,7 +181,7 @@ module.exports.generate = (io) => async (req, res) => {
     const infoPrompt = `Provide a brief summary, a few tips (array of string), a country flag for a trip to ${destination?.name}, ${destination?.country}, and location (city center coordinates lat and lng) in JSON format`;
     console.debug("[TripController - generate info prompt] :: ", infoPrompt);
 
-    const infoChatCompletion = await generateCompletion(infoPrompt, "gpt-3.5-turbo-1106");
+    const infoChatCompletion = await generateCompletion(infoPrompt, "gpt-4o");
     for (let i = 0; i < 20; i++) {
       // Artificially creating smaller steps
       await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work
@@ -203,7 +203,7 @@ module.exports.generate = (io) => async (req, res) => {
     console.debug("[TripController - generate places prompt] :: ", placesPrompt);
 
     updateProgress("Generating places to visit...", 2);
-    const placesChatCompletion = await generateCompletion(placesPrompt, "gpt-4-turbo", 0.5, 0.5);
+    const placesChatCompletion = await generateCompletion(placesPrompt, "gpt-4o", 0.5, 0.5);
     for (let i = 0; i < 30; i++) {
       // Artificially creating smaller steps
       await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work

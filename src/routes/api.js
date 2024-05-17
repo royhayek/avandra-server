@@ -113,7 +113,6 @@ module.exports = function (io) {
   router.route("/settings/update/:id").patch(catchErrors(settingsController.update));
   router.route("/settings/delete/:id").delete(catchErrors(settingsController.delete));
   router.route("/settings/list").get(catchErrors(settingsController.list));
-  router.route("/settings/config").get(catchErrors(settingsController.config));
   router.route("/settings/privacyPolicy").get(catchErrors(settingsController.privacyPolicy));
 
   router.route("/language/create").post(catchErrors(languageController.create));
