@@ -249,10 +249,12 @@ module.exports.generate = (io) => async (req, res) => {
       };
     });
 
-    let image = googleImage;
+    let image = googleImage,
+      imagePath = "trip";
     const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
     if (existingDestination) {
       image = existingDestination?.image;
+      imagePath = "destination";
     }
 
     // Creating a new document in the collection
@@ -274,6 +276,7 @@ module.exports.generate = (io) => async (req, res) => {
       user,
       image,
       places,
+      imagePath,
       status: "upcoming",
       language: languageId,
       flag: parsedInfoObject.flag,

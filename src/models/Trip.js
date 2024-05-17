@@ -63,6 +63,7 @@ const tripSchema = new Schema(
       required: true,
     },
     image: String,
+    imagePath: String,
     tips: [String],
     description: String,
     continent: String,
