@@ -18,7 +18,7 @@ const generatePopulationOptions = (model) => {
   return populationOptions;
 };
 
-const getMailerTransport = async () => {
+const getMailerTransport = async (from) => {
   try {
     // Retrieve settings from MongoDB
     const settings = await Settings.findOne();
@@ -34,7 +34,7 @@ const getMailerTransport = async () => {
         user: username,
         pass: password,
       },
-      from: fromEmail,
+      from: from ?? fromEmail,
     });
   } catch (error) {
     console.error("Error retrieving mail settings:", error);
@@ -43,7 +43,7 @@ const getMailerTransport = async () => {
 };
 
 const sendEmail = async ({ from, to, subject, text, html }) => {
-  const transporter = await getMailerTransport();
+  const transporter = await getMailerTransport(from);
 
   const mailOptions = {
     from: from, // Sender address
@@ -63,7 +63,16 @@ const sendEmail = async ({ from, to, subject, text, html }) => {
   }
 };
 
+// Helper function to normalize dates to midnight
+const formatDateToYYYYMMD = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = date.getDate();
+  return `${year}-${month}-${day}`;
+};
+
 module.exports = {
   generatePopulationOptions,
+  formatDateToYYYYMMD,
   sendEmail,
 };

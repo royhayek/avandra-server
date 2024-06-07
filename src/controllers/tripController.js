@@ -11,6 +11,7 @@ const Language = mongoose.model("Language");
 const Destination = mongoose.model("Destination");
 
 const methods = require("./crudController");
+const { formatDateToYYYYMMD } = require("../helpers");
 
 module.exports = methods.crudController("Trip");
 
@@ -526,5 +527,34 @@ module.exports.getTripById = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports.updateTripStatus = async () => {
+  try {
+    const today = formatDateToYYYYMMD(new Date());
+
+    // Set status to 'active' if today is within fromDate and toDate
+    const activateTrips = await Trip.updateMany(
+      {
+        "payload.fromDate": { $lte: today },
+        "payload.toDate": { $gte: today },
+        status: "upcoming",
+      },
+      { $set: { status: "active" } }
+    );
+    console.log(`Activated ${activateTrips.nModified} trips`);
+
+    // Set status to 'expired' if today is past toDate
+    const expireTrips = await Trip.updateMany(
+      {
+        "payload.toDate": { $lt: today },
+        status: { $in: ["upcoming", "active"] },
+      },
+      { $set: { status: "expired" } }
+    );
+    console.log(`Expired ${expireTrips.nModified} trips`);
+  } catch (error) {
+    console.error("Error updating trip statuses:", error);
   }
 };

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Device = mongoose.model("Device");
 const User = mongoose.model("User");
 const Trip = mongoose.model("Trip");
 const Message = mongoose.model("Message");
@@ -11,6 +12,7 @@ exports.read = async (req, res) => {
     const destinations = await Destination.find();
     const trips = await Trip.find();
     const unreadMessages = await Message.find({ status: "unread" });
+    const devices = await Device.find();
 
     const data = {
       usersCount: users.length,
@@ -18,6 +20,7 @@ exports.read = async (req, res) => {
       destinationsCount: destinations.length,
       tripsCount: trips.length,
       unreadMessagesCount: unreadMessages.length,
+      devicesCount: devices.length,
     };
 
     return res.status(200).json({

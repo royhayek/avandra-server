@@ -20,6 +20,7 @@ module.exports = function (io) {
   const faqCategoryController = require("../controllers/faqCategoryController");
   const destinationController = require("../controllers/destinationController");
   const walkthroughController = require("../controllers/walkthroughController");
+  const notificationController = require("../controllers/notificationController");
 
   // *** User Routes *** //
   router.route("/user/create").post(catchErrors(userController.create));
@@ -29,6 +30,7 @@ module.exports = function (io) {
   router.route("/user/search").get(catchErrors(userController.search));
   router.route("/user/list").get(catchErrors(userController.list));
   router.route("/user/password-update/:id").patch(catchErrors(userController.updatePassword));
+  router.route("/user/device-info").post(catchErrors(userController.deviceInfo));
 
   // *** Configuration Routes *** //
   router.route("/config").get(catchErrors(configController.read));
@@ -76,7 +78,7 @@ module.exports = function (io) {
   router.route("/interest/delete/:id").delete(catchErrors(interestController.delete));
   router.route("/interest/list").get(catchErrors(interestController.list));
 
-  router.route("/message/create").post(catchErrors(messageController.create));
+  router.route("/message/create").post(catchErrors(messageController.sendMessage));
   router.route("/message/read/:id").get(catchErrors(messageController.read));
   router.route("/message/update/:id").patch(catchErrors(messageController.update));
   router.route("/message/delete/:id").delete(catchErrors(messageController.delete));
@@ -120,6 +122,13 @@ module.exports = function (io) {
   router.route("/language/update/:id").patch(catchErrors(languageController.update));
   router.route("/language/delete/:id").delete(catchErrors(languageController.delete));
   router.route("/language/list").get(catchErrors(languageController.list));
+
+  router.route("/notification/create").post(catchErrors(notificationController.create));
+  router.route("/notification/read/:id").get(catchErrors(notificationController.read));
+  router.route("/notification/update/:id").patch(catchErrors(notificationController.update));
+  router.route("/notification/delete/:id").delete(catchErrors(notificationController.delete));
+  router.route("/notification/list").get(catchErrors(notificationController.list));
+  router.route("/notification/send").post(catchErrors(notificationController.sendNotification));
 
   return router;
 };

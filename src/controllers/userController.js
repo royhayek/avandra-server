@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const User = mongoose.model("User");
 const Trip = mongoose.model("Trip");
 const Message = mongoose.model("Message");
+const Device = mongoose.model("Device");
 
 /**
  *  Get all documents of a Model
@@ -421,5 +422,84 @@ exports.search = async (req, res) => {
       data: [],
       message: "Oops there is an Error",
     });
+  }
+};
+
+exports.deviceInfo = async (req, res) => {
+  try {
+    const {
+      user,
+      deviceId,
+      pushToken,
+      brand,
+      osName,
+      osVersion,
+      modelName,
+      deviceName,
+      manufacturer,
+      deviceYearClass,
+    } = req.body;
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "User ID is required",
+      });
+    }
+
+    const existingDevice = await Device.findOne({ user });
+
+    if (existingDevice) {
+      // Update existing device information
+      existingDevice.pushToken = pushToken;
+      existingDevice.brand = brand;
+      existingDevice.osName = osName;
+      existingDevice.osVersion = osVersion;
+      existingDevice.modelName = modelName;
+      existingDevice.deviceName = deviceName;
+      existingDevice.manufacturer = manufacturer;
+      existingDevice.deviceYearClass = deviceYearClass;
+
+      const updatedDevice = await existingDevice.save();
+
+      return res.status(200).json({
+        success: true,
+        data: updatedDevice,
+        message: "Device information updated successfully",
+      });
+    } else {
+      // Create a new device entry
+      const newDevice = new Device({
+        user,
+        deviceId,
+        pushToken,
+        brand,
+        osName,
+        osVersion,
+        modelName,
+        deviceName,
+        manufacturer,
+        deviceYearClass,
+      });
+
+      const result = await newDevice.save();
+
+      if (!result) {
+        return res.status(403).json({
+          success: false,
+          data: null,
+          message: "Device couldn't be saved",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+        message: "Device registered successfully",
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 };

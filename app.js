@@ -1,6 +1,7 @@
 const cors = require("cors");
 const path = require("path");
 const express = require("express");
+const cron = require("node-cron");
 const bodyParser = require("body-parser");
 const session = require("express-session");
 const promisify = require("es6-promisify");
@@ -9,6 +10,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const errorHandlers = require("./src/handlers/errorHandlers");
+const tripController = require("./src/controllers/tripController");
 
 const { isValidToken } = require("./src/controllers/authController");
 
@@ -118,6 +120,12 @@ if (app.get("env") === "development") {
   /* Development Error Handler - Prints stack trace */
   app.use(errorHandlers.developmentErrors);
 }
+
+// Schedule the task to run every day at midnight
+cron.schedule("0 0 * * *", tripController.updateTripStatus);
+
+// Optionally run the task immediately on startup
+// tripController.updateTripStatus();
 
 // production error handler
 app.use(errorHandlers.productionErrors);

@@ -313,7 +313,6 @@ exports.updateWithImage = async (Model, req, res) => {
 
     if (existingDoc.gallery && req.files && req.files.gallery) {
       existingDoc.gallery.forEach((filename) => {
-        console.debug("filename", filename);
         const galleryPath = path.join(
           __dirname,
           `../../../public/uploads/${modelName.toLowerCase()}/gallery/${filename}`
@@ -460,10 +459,12 @@ exports.list = async (Model, req, res) => {
     // Generate population options based on the Model schema
     const populationOptions = generatePopulationOptions(Model);
 
-    const languageId = await Language.findOne({ value: lang });
+    const language = await Language.findOne({ value: lang });
+    const languageId = language?._id;
 
     // Start the query and dynamically apply population options
     let model = languageId ? Model.find({ language: languageId }) : Model.find();
+
     let query = model.skip(skip).limit(limit).sort({ created: "desc" });
 
     // Apply each population option to the query
