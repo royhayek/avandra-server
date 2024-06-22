@@ -14,6 +14,14 @@ const settingsSchema = new Schema({
   privacyPolicy: {
     type: String,
   },
+  googlePackageName: {
+    type: String,
+    required: true,
+  },
+  appleAppId: {
+    type: String,
+    required: true,
+  },
   smtp: {
     host: {
       type: String,

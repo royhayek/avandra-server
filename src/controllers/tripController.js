@@ -1,8 +1,6 @@
 const axios = require("axios");
 const OpenAI = require("openai");
 const mongoose = require("mongoose");
-const wss = require("../../websocket");
-const path = require("path");
 
 const Trip = mongoose.model("Trip");
 const Budget = mongoose.model("Budget");
@@ -60,8 +58,8 @@ const findPlaceId = async (placeName, placeAddress, apiKey) => {
   return data.candidates.length > 0 ? data.candidates[0].place_id : null;
 };
 
-const getPlaceDetailsAndPhoto = async (placeId, fields, apiKey) => {
-  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
+const getPlaceDetailsAndPhoto = async (placeId, fields, apiKey, language) => {
+  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}&language=${language?.value}`;
   const response = await fetch(detailsUrl);
   const data = await response.json();
 
@@ -75,23 +73,22 @@ const getPlaceDetailsAndPhoto = async (placeId, fields, apiKey) => {
   return { ...data.result, photo_url };
 };
 
-const fetchPlacesDetails = async (places, apiKey, updateProgress) => {
+const fetchPlacesDetails = async (places, apiKey, language) => {
   const results = [];
 
   for (const place of places) {
     const placeId = await findPlaceId(place.n, place.a, apiKey); // Using address to find the place ID
     if (!placeId) {
-      console.log(`No Place ID found for: ${place.n}`);
+      console.log(`No Place ID found for: ${place.n}, ${place.a}`);
       continue;
     }
 
     const details = await getPlaceDetailsAndPhoto(
       placeId,
-      "rating,user_ratings_total,international_phone_number,opening_hours,price_level,photo",
-      apiKey
+      "name,rating,user_ratings_total,website,type,international_phone_number,opening_hours,price_level,photo,photos,icon,geometry",
+      apiKey,
+      language
     );
-
-    updateProgress("Generating places to visit...", 1);
 
     results.push({ ...place, details });
   }
@@ -141,79 +138,41 @@ module.exports.generate = (io) => async (req, res) => {
     }
 
     // Get request body
-
     const { user, destination, byDate, fromDate, toDate, duration, selectedMonth, traveler, budget, interests } =
       tripData;
     const lang = req.headers["accept-language"];
-    const languageId = await Language.findOne({ value: lang });
-
-    // Assuming each client connects with a unique socket ID
-    const socketId = req.body.socketId;
-    const socket = io.to(socketId);
-
-    // Initialize progress
-    let progress = 0;
-
-    function updateProgress(message, increment) {
-      progress += increment;
-      socket.emit("progress", { message, percent: Math.min(progress, 100) });
-    }
-
-    // Emit initial progress
-    updateProgress("Starting itinerary generation...", 1);
+    const language = await Language.findOne({ value: lang });
 
     // Generate summary and tips
     const chosenTraveler = await Traveler.findById(traveler);
-    updateProgress("Generating summary and tips...", 2);
-
     const chosenBudget = await Budget.findById(budget);
-    updateProgress("Generating summary and tips...", 2);
-
     const placeId = await findPlaceId(destination?.name, destination?.country, process.env.GOOGLE_API_KEY);
-    updateProgress("Generating summary and tips...", 3);
 
-    const google_details = await getPlaceDetailsAndPhoto(placeId, "photo", process.env.GOOGLE_API_KEY);
-    updateProgress("Generating summary and tips...", 2);
-
-    const googleImage = google_details?.photo_url;
-
-    updateProgress("Generating summary and tips...", 2);
-
-    const infoPrompt = `Provide a brief summary, a few tips (array of string), a country flag for a trip to ${destination?.name}, ${destination?.country}, and location (city center coordinates lat and lng) in JSON format`;
+    const infoPrompt = `Provide a brief summary (300 char max), a few tips (array of string), a country flag for a trip to ${destination?.name}, ${destination?.country}, and location (city center coordinates lat and lng) in JSON format and in ${language?.label}`;
     console.debug("[TripController - generate info prompt] :: ", infoPrompt);
 
     const infoChatCompletion = await generateCompletion(infoPrompt, "gpt-4o");
-    for (let i = 0; i < 20; i++) {
-      // Artificially creating smaller steps
-      await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work
-      updateProgress("Generating summary and tips...", 1);
-    }
 
     // Generate places to visit
     const placesPrompt =
-      `Create a complete JSON itinerary to ${destination?.name}, ${destination?.country} ` +
+      `Create a complete JSON itinerary in ${language?.label} to ${destination?.name}, ${destination?.country} ` +
       (byDate
-        ? `from ${fromDate} to ${toDate} (${duration + 1} days) ${chosenTraveler?.title}.`
-        : `for ${duration} in ${selectedMonth} as ${chosenTraveler}.`) +
+        ? `from ${fromDate} to ${toDate} (${duration + 1} days) for ${chosenTraveler?.title}.`
+        : `for ${duration} days in ${selectedMonth} as ${chosenTraveler?.title}.`) +
       ` Focusing on ${interests} ` +
       `with a ${chosenBudget?.title} budget. ` +
-      "Include three meals daily and three interest-based activities. " +
-      "Format: [{'d':'','p':[{'t':'','n':'','a':'','c':{'lat':'','lng':''}}]}]. " +
-      "d: date, p: places (array), t: type (restaurant/landmark), n: name, a: address, c: coordinates";
+      "Include three meals daily and three fixed interest-based activities. " +
+      "Format: [{d:'',p:[{n:'',a:''}]}]. " +
+      "d: date, p: places (array), n: place name, a: address";
 
     console.debug("[TripController - generate places prompt] :: ", placesPrompt);
 
-    updateProgress("Generating places to visit...", 2);
     const placesChatCompletion = await generateCompletion(placesPrompt, "gpt-4o", 0.5, 0.5);
-    for (let i = 0; i < 30; i++) {
-      // Artificially creating smaller steps
-      await new Promise((resolve) => setTimeout(resolve, 50)); // Simulating some work
-      updateProgress("Generating places to visit....", 1);
-    }
 
     // Parse info and places JSON objects
     const parsedInfoObject = JSON.parse(infoChatCompletion.choices[0].message.content);
     const parsedPlacesObject = JSON.parse(placesChatCompletion.choices[0].message.content);
+    console.debug("parsedPlacesObject", parsedPlacesObject);
 
     let placeDetails = [];
     const placesMap = (Array.isArray(parsedPlacesObject) ? parsedPlacesObject : parsedPlacesObject?.itinerary)?.flatMap(
@@ -221,41 +180,46 @@ module.exports.generate = (io) => async (req, res) => {
     );
 
     try {
-      placeDetails = await fetchPlacesDetails(placesMap, process.env.GOOGLE_API_KEY, updateProgress);
+      placeDetails = await fetchPlacesDetails(placesMap, process.env.GOOGLE_API_KEY, lang);
     } catch (error) {
       console.error("Error fetching place details:", error);
     }
 
     //rating,user_ratings_total,international_phone_number,opening_hours,price_level,photo
-    const places = parsedPlacesObject?.itinerary.map((place) => {
-      updateProgress("Generating places to visit...", 3);
-
-      return {
-        date: place.d,
-        list: place.p.map((p, i) => {
-          const details = placeDetails.find((detail) => detail.n === p.n && detail.a === p.a)?.details;
+    const places = parsedPlacesObject?.itinerary.map((place) => ({
+      date: place.d,
+      list: place.p.map((p, i) => {
+        const details = placeDetails.find((detail) => detail.n === p.n && detail.a === p.a)?.details;
+        if (details) {
           return {
             type: p.t,
             name: p.n,
             address: p.a,
-            coordinates: p.c,
-            userRatingsTotal: details?.user_ratings_total,
-            internationalPhone: details?.international_phone_number,
+            types: details?.types,
+            photos: details?.photos,
             rating: details?.rating,
-            openingHours: details?.opening_hours,
+            website: details?.website,
+            displayName: details?.name,
             photoUrl: details?.photo_url,
             priceLevel: details?.price_level,
+            openingHours: details?.opening_hours,
+            coordinates: details?.geometry?.location,
+            userRatingsTotal: details?.user_ratings_total,
+            internationalPhone: details?.international_phone_number,
           };
-        }),
-      };
-    });
+        }
+      }),
+    }));
 
-    let image = googleImage,
+    let image = "",
       imagePath = "trip";
     const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
     if (existingDestination) {
       image = existingDestination?.image;
       imagePath = "destination";
+    } else {
+      const google_details = await getPlaceDetailsAndPhoto(placeId, "photo", process.env.GOOGLE_API_KEY);
+      image = google_details?.photo_url;
     }
 
     // Creating a new document in the collection
@@ -279,7 +243,7 @@ module.exports.generate = (io) => async (req, res) => {
       places,
       imagePath,
       status: "upcoming",
-      language: languageId,
+      language: language,
       flag: parsedInfoObject.flag,
       tips: parsedInfoObject.tips,
       location: parsedInfoObject.location,
@@ -287,14 +251,10 @@ module.exports.generate = (io) => async (req, res) => {
     };
 
     // Finalizing and saving the trip details
-    updateProgress("Finalizing details...", 5);
-
     const savedTrip =
       regenerating && tripId
         ? await Trip.findByIdAndUpdate(tripId, data, { new: true }) // Update existing trip
         : await new Trip(data).save(); // Store new trip
-
-    updateProgress("Itinerary generation complete.", 2);
 
     return res.status(200).json({
       success: true,
@@ -304,7 +264,6 @@ module.exports.generate = (io) => async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    socket.emit("progress", { message: "Error generating itinerary", percent: progress });
     return res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -451,8 +410,8 @@ module.exports.getPopularPlaces = async (req, res) => {
     const { id } = req.params;
     const apiKey = process.env.GOOGLE_API_KEY; // Replace with your actual API key
     const types = ["restaurant", "bar", "cafe", "park", "museum", "shopping_mall"]; // Type to filter places
-    const radius = 500.0; // Radius in meters
-    const maxResultCount = 10; // Limit the number of results to 10
+    const radius = 1000.0; // Radius in meters
+    const maxResultCount = 10; // Limit the nmumber of results to 10
 
     const trip = await Trip.findById(id).select("location");
     const { lat, lng } = trip.location;
@@ -481,7 +440,7 @@ module.exports.getPopularPlaces = async (req, res) => {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": process.env.GOOGLE_API_KEY,
         "X-Goog-FieldMask":
-          "places.displayName,places.location,places.id,places.rating,places.internationalPhoneNumber,places.editorialSummary,places.formattedAddress,places.currentOpeningHours,places.photos,places.userRatingCount,places.priceLevel,places.types",
+          "places.displayName,places.location,places.photos,places.id,places.rating,places.internationalPhoneNumber,places.types,places.editorialSummary,places.formattedAddress,places.currentOpeningHours,places.photos,places.userRatingCount,places.priceLevel,places.types",
       },
     });
 
@@ -489,20 +448,23 @@ module.exports.getPopularPlaces = async (req, res) => {
     const places = response.data.places;
     const formattedPlaces = places.map((place, index) => ({
       placeId: place?.id,
-      name: place?.displayName?.text,
+      types: place?.types,
+      photos: place?.photos,
       rating: place?.rating,
+      website: place?.website,
       priceLevel: place?.priceLevel,
+      name: place?.displayName?.text,
       address: place?.formattedAddress,
-      openingHours: place?.currentOpeningHours?.weekdayDescriptions,
+      displayName: place?.displayName?.text,
       userRatingsTotal: place?.userRatingCount,
       description: place?.editorialSummary?.text,
       internationalPhone: place?.internationalPhoneNumber,
       type: place?.types.includes("restaurant") ? "restaurant" : "landmark",
       coordinates: { lat: place?.location.latitude, lng: place?.location.longitude },
+      openingHours: { weekday_text: place?.currentOpeningHours?.weekdayDescriptions },
       photoUrl: `https://places.googleapis.com/v1/${place?.photos?.[0].name}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`,
     }));
 
-    console.debug("formattedPlaces", formattedPlaces);
     return res.status(200).json({
       success: true,
       result: formattedPlaces,

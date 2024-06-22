@@ -87,21 +87,21 @@ exports.register = async (req, res) => {
 
     const token = generateJwtToken(savedUser._id);
 
-    if (isLocalSignIn) {
-      try {
-        await sendEmail({
-          from: '"Wondrous" <no-reply@nextgenappsdev.com>',
-          to: savedUser.email,
-          subject: "Welcome to Our App!",
-          text: `Hi ${name}, welcome to our application!`,
-          html: `<b>Hi ${name}</b>, welcome to our application!`,
-        });
+    // if (isLocalSignIn) {
+    //   try {
+    //     await sendEmail({
+    //       from: '"Wondrous" <no-reply@nextgenappsdev.com>',
+    //       to: savedUser.email,
+    //       subject: "Welcome to Our App!",
+    //       text: `Hi ${name}, welcome to our application!`,
+    //       html: `<b>Hi ${name}</b>, welcome to our application!`,
+    //     });
 
-        console.error(`User registered and email sent to ${email}!`);
-      } catch (error) {
-        console.error("Error in user registration or sending email");
-      }
-    }
+    //     console.error(`User registered and email sent to ${email}!`);
+    //   } catch (error) {
+    //     console.error("Error in user registration or sending email");
+    //   }
+    // }
 
     res.status(200).json({
       success: true,
@@ -109,6 +109,15 @@ exports.register = async (req, res) => {
       token,
     });
   } catch (err) {
+    console.debug("error", err);
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "You are already registered with a different provider. Please login with that provider.",
+      });
+    }
+
     res.status(500).json({
       success: false,
       data: null,
@@ -166,6 +175,7 @@ exports.login = async (req, res) => {
       message: "Successfully login admin",
     });
   } catch (err) {
+    console.debug("error", err);
     // res.status(500).json({ success: false, data: null, message: err.message });
     res.status(500).json({ success: false, data: null, message: err.message });
   }

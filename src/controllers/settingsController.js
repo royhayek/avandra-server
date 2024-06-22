@@ -6,7 +6,12 @@ module.exports = methods.crudController("Settings");
 
 module.exports.config = async (req, res) => {
   try {
-    const settings = await Settings.findOne().select("privacyPolicy").select("termsAndConditions");
+    const settings = await Settings.findOne().select([
+      "privacyPolicy",
+      "termsAndConditions",
+      "appleAppId",
+      "googlePackageName",
+    ]);
 
     if (settings) {
       return res.status(200).json({

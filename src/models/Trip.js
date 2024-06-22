@@ -4,7 +4,6 @@ const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
 const PlacesList = require("./PlacesList");
-const ItineraryList = require("./ItineraryList");
 
 const tripSchema = new Schema(
   {
@@ -28,14 +27,8 @@ const tripSchema = new Schema(
         ref: "Traveler",
         required: true,
       },
-      fromDate: {
-        type: String,
-        required: true,
-      },
-      toDate: {
-        type: String,
-        required: true,
-      },
+      fromDate: String,
+      toDate: String,
       byDate: {
         type: Boolean,
         required: true,
@@ -74,7 +67,6 @@ const tripSchema = new Schema(
       required: true,
     },
     places: [PlacesList.schema],
-    itineraries: [ItineraryList.schema],
     status: {
       type: String,
       required: true,
