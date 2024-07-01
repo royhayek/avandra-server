@@ -43,10 +43,8 @@ module.exports = function (io) {
   router.route("/destination/read/:id").get(catchErrors(destinationController.read));
   router.route("/destination/update/:id").patch(catchErrors(destinationController.updateWithImage));
   router.route("/destination/delete/:id").delete(catchErrors(destinationController.delete));
-  router.route("/destination/list").get(catchErrors(destinationController.list));
 
   router.route("/search/increment").post(catchErrors(searchController.increment));
-  router.route("/search/recent").get(catchErrors(searchController.recent));
 
   router.route("/walkthrough/create").post(catchErrors(walkthroughController.createWithImage));
   router.route("/walkthrough/read/:id").get(catchErrors(walkthroughController.read));
@@ -58,7 +56,6 @@ module.exports = function (io) {
   router.route("/article/read/:id").get(catchErrors(articleController.read));
   router.route("/article/update/:id").patch(catchErrors(articleController.updateWithImage));
   router.route("/article/delete/:id").delete(catchErrors(articleController.delete));
-  router.route("/article/list").get(catchErrors(articleController.list));
 
   router.route("/traveler/create").post(catchErrors(travelerController.createWithImage));
   router.route("/traveler/read/:id").get(catchErrors(travelerController.read));

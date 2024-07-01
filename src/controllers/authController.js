@@ -19,7 +19,7 @@ const generateJwtToken = (id) =>
 
 exports.register = async (req, res) => {
   try {
-    let { email, name, image, role, gender, password, passwordCheck, provider, providerId } = req.body;
+    let { email, name, image, role, password, passwordCheck, provider, providerId } = req.body;
 
     const isSocialSignIn = providerId;
     const isLocalSignIn = email && !providerId;
@@ -71,7 +71,6 @@ exports.register = async (req, res) => {
       email: email !== null && email !== undefined ? email : undefined,
       name,
       role,
-      gender,
       provider,
       photo: image,
       providerId: isSocialSignIn && providerId !== null && providerId !== undefined ? providerId : undefined,

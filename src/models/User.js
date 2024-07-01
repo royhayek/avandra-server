@@ -24,9 +24,6 @@ const userSchema = new Schema({
     type: String,
   },
   name: { type: String, required: true },
-  gender: {
-    type: String,
-  },
   photo: {
     type: String,
     trim: true,
