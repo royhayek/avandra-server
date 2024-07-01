@@ -210,7 +210,6 @@ module.exports.generate = (io) => async (req, res) => {
         }
       }),
     }));
-
     let image = "",
       imagePath = "trip";
     const existingDestination = await Destination.findOne({ name: destination.name, country: destination.country });
@@ -305,16 +304,16 @@ module.exports.tripsByUser = async (req, res) => {
 
     // Check if today is between one of the trip dates (fromDate and toDate), if yes make modify its status to "active"
     // and if today exceeds toDate, make its status "expired"
-    const today = new Date();
-    trips.forEach((trip) => {
-      const fromDate = new Date(trip.payload.fromDate);
-      const toDate = new Date(trip.payload.toDate);
-      if (today >= fromDate && today <= toDate) {
-        trip.status = "active";
-      } else if (today > toDate) {
-        trip.status = "expired";
-      }
-    });
+    // const today = new Date();
+    // trips.forEach((trip) => {
+    //   const fromDate = new Date(trip.payload.fromDate);
+    //   const toDate = new Date(trip.payload.toDate);
+    //   if (today >= fromDate && today <= toDate) {
+    //     trip.status = "active";
+    //   } else if (today > toDate) {
+    //     trip.status = "expired";
+    //   }
+    // });
 
     return res.status(200).json({
       success: true,
