@@ -10,12 +10,22 @@ const articleController = require("../controllers/articleController");
 const settingsController = require("../controllers/settingsController");
 const destinationController = require("../controllers/destinationController");
 const walkthroughController = require("../controllers/walkthroughController");
-const { isValidToken, login, logout, register, validateToken, guest } = require("../controllers/authController");
+const {
+  login,
+  logout,
+  register,
+  isValidToken,
+  validateToken,
+  resetPassword,
+  forgotPassword,
+} = require("../controllers/authController");
 
-router.route("/register").post(catchErrors(register));
 router.route("/login").post(catchErrors(login));
+router.route("/register").post(catchErrors(register));
 router.route("/validateToken").get(catchErrors(validateToken));
 router.route("/logout").post(isValidToken, catchErrors(logout));
+router.route("/reset-password").post(catchErrors(resetPassword));
+router.route("/forgot-password").post(catchErrors(forgotPassword));
 
 router.route("/article/list").get(catchErrors(articleController.list));
 router.route("/article/read/:id").get(catchErrors(articleController.read));

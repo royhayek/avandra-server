@@ -172,7 +172,6 @@ module.exports.generate = (io) => async (req, res) => {
     // Parse info and places JSON objects
     const parsedInfoObject = JSON.parse(infoChatCompletion.choices[0].message.content);
     const parsedPlacesObject = JSON.parse(placesChatCompletion.choices[0].message.content);
-    console.debug("parsedPlacesObject", parsedPlacesObject);
 
     let placeDetails = [];
     const placesMap = (Array.isArray(parsedPlacesObject) ? parsedPlacesObject : parsedPlacesObject?.itinerary)?.flatMap(
@@ -504,7 +503,6 @@ module.exports.updateTripStatus = async () => {
       },
       { $set: { status: "active" } }
     );
-    console.log(`Activated ${activateTrips.nModified} trips`);
 
     // Set status to 'expired' if today is past toDate
     const expireTrips = await Trip.updateMany(
@@ -514,7 +512,6 @@ module.exports.updateTripStatus = async () => {
       },
       { $set: { status: "expired" } }
     );
-    console.log(`Expired ${expireTrips.nModified} trips`);
   } catch (error) {
     console.error("Error updating trip statuses:", error);
   }

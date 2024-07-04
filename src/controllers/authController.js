@@ -19,12 +19,12 @@ const generateJwtToken = (id) =>
 
 exports.register = async (req, res) => {
   try {
-    let { email, name, image, role, password, passwordCheck, provider, providerId } = req.body;
+    let { email, name, image, role, country, password, provider, providerId } = req.body;
 
     const isSocialSignIn = providerId;
     const isLocalSignIn = email && !providerId;
 
-    if (isLocalSignIn && (!password || !passwordCheck)) {
+    if (isLocalSignIn && !password) {
       return res.status(400).json({
         msg: "Email is required, and not all fields have been entered.",
       });
@@ -40,9 +40,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ msg: "The password needs to be at least 5 characters long." });
     }
 
-    if (!isSocialSignIn && password && password !== passwordCheck) {
-      return res.status(400).json({ msg: "Enter the same password twice for verification." });
-    }
+    // if (!isSocialSignIn && password && password !== passwordCheck) {
+    //   return res.status(400).json({ msg: "Enter the same password twice for verification." });
+    // }
 
     let existingUser;
 
@@ -71,6 +71,7 @@ exports.register = async (req, res) => {
       email: email !== null && email !== undefined ? email : undefined,
       name,
       role,
+      country,
       provider,
       photo: image,
       providerId: isSocialSignIn && providerId !== null && providerId !== undefined ? providerId : undefined,
@@ -86,21 +87,20 @@ exports.register = async (req, res) => {
 
     const token = generateJwtToken(savedUser._id);
 
-    // if (isLocalSignIn) {
-    //   try {
-    //     await sendEmail({
-    //       from: '"Wondrous" <no-reply@nextgenappsdev.com>',
-    //       to: savedUser.email,
-    //       subject: "Welcome to Our App!",
-    //       text: `Hi ${name}, welcome to our application!`,
-    //       html: `<b>Hi ${name}</b>, welcome to our application!`,
-    //     });
+    if (isLocalSignIn) {
+      try {
+        await sendEmail({
+          from: '"Avandra" <no-reply@avandraapp.com>',
+          to: savedUser.email,
+          subject: "Welcome to Our App!",
+          text: `Hi ${name}, welcome to our Avandra!`,
+        });
 
-    //     console.error(`User registered and email sent to ${email}!`);
-    //   } catch (error) {
-    //     console.error("Error in user registration or sending email");
-    //   }
-    // }
+        console.error(`User registered and email sent to ${email}!`);
+      } catch (error) {
+        console.error("Error in user registration or sending email");
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -132,46 +132,31 @@ exports.login = async (req, res) => {
     // validate
     if (!email || !password) return res.status(400).json({ msg: "Not all fields have been entered." });
 
-    const admin = await User.findOne({ email: email });
-    // console.log(admin);
-    if (!admin)
+    const user = await User.findOne({ email });
+
+    if (!user)
       return res.status(400).json({
         success: false,
         data: null,
         message: "No account with this email has been registered.",
       });
 
-    const isMatch = await bcrypt.compare(password, admin.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({
         success: false,
         data: null,
-        message: "Invalid credentials.",
+        message: "Invalid email or password!",
       });
 
-    const token = generateJwtToken(admin.id);
+    const token = generateJwtToken(user.id);
 
-    const result = await User.findOneAndUpdate(
-      { _id: admin._id },
-      { isLoggedIn: true },
-      {
-        new: true,
-      }
-    ).exec();
+    // const result = await User.findOneAndUpdate({ _id: user._id }).exec();
 
     res.json({
       success: true,
-      data: {
-        token,
-        admin: {
-          _id: result._id,
-          name: result.name,
-          role: result.role,
-          email: result.email,
-          isLoggedIn: result.isLoggedIn,
-        },
-      },
-      message: "Successfully login admin",
+      user,
+      token,
     });
   } catch (err) {
     console.debug("error", err);
@@ -186,6 +171,69 @@ exports.checkLoggedIn = async (req, res) => {
     res.json({ isLoggedIn: true, user: req.user });
   } catch (err) {
     res.status(500).json({ success: false, data: null, message: err.message });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a reset token
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    // Save the token to the user's record (optional, if you want to verify it later)
+    user.resetPasswordToken = resetToken;
+    await user.save();
+
+    // Send the reset email
+    const resetUrl = `http://avandraapp.com/reset-password?token=${resetToken}`;
+
+    await sendEmail({
+      from: '"Avandra" <no-reply@avandraapp.com>',
+      to: user.email,
+      subject: "Password Reset Request",
+      text: `Please click the following link to reset your password: ${resetUrl}`,
+      // html: `<b>Hi ${name}</b>, welcome to our application!`,
+    });
+
+    res.json({ success: true, message: "Password reset email sent" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { password, token } = req.body;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ _id: decoded.id });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const salt = await bcrypt.genSalt();
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    user.password = passwordHash;
+    user.resetPasswordToken = undefined;
+    await user.save();
+
+    res.json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
