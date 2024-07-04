@@ -64,15 +64,15 @@ const sendEmail = async ({ from, to, subject, text, html }) => {
 };
 
 // Helper function to normalize dates to midnight
-const formatDateToYYYYMMD = (date) => {
+const formatDateToYYYYMMDD = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = date.getDate();
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
 module.exports = {
   generatePopulationOptions,
-  formatDateToYYYYMMD,
+  formatDateToYYYYMMDD,
   sendEmail,
 };

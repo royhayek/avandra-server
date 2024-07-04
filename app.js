@@ -122,10 +122,14 @@ if (app.get("env") === "development") {
 }
 
 // Schedule the task to run every day at midnight
-cron.schedule("0 0 * * *", tripController.updateTripStatus);
+setTimeout(() => {
+  cron.schedule("0 0 * * *", tripController.updateTripStatus);
+}, 10000);
 
 // Optionally run the task immediately on startup
-// tripController.updateTripStatus();
+// setTimeout(() => {
+//   tripController.updateTripStatus();
+//   }, 5000);
 
 // production error handler
 app.use(errorHandlers.productionErrors);
