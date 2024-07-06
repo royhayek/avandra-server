@@ -34,6 +34,7 @@ module.exports = function (io) {
 
   // *** Configuration Routes *** //
   router.route("/config").get(catchErrors(configController.read));
+  router.route("/images").post(catchErrors(configController.images));
 
   // *** Dashboard Routes *** //
   router.route("/dashboard").get(catchErrors(dashboardController.read));
