@@ -288,10 +288,11 @@ exports.updateWithImage = async (Model, req, res) => {
       });
     }
 
+    console.debug('req.body', req.body)
+    console.debug('req.files && req.files.image ? req.files.image[0].filename : existingDoc.image', req.files && req.files.image ? req.files.image[0].filename : existingDoc.image)
+
     // Check if the image, flag, and gallery are provided in the request
-    console.debug("req.body", req.body);
     const updatedImage = req.files && req.files.image ? req.files.image[0].filename : existingDoc.image;
-    console.debug("updatedImage", updatedImage);
     const updatedFlag = req.files && req.files.flag ? req.files.flag[0].filename : existingDoc.flag;
     const updatedGallery =
       req.files && req.files.gallery ? req.files.gallery.map((file) => file.filename) : existingDoc.gallery;
@@ -302,9 +303,7 @@ exports.updateWithImage = async (Model, req, res) => {
         __dirname,
         `../../../public/uploads/${modelName.toLowerCase()}/image/${existingDoc.image}`
       );
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
 
     if (existingDoc.flag && req.files && req.files.flag && !existingDoc.flag.includes("http")) {
@@ -312,9 +311,7 @@ exports.updateWithImage = async (Model, req, res) => {
         __dirname,
         `../../../public/uploads/${modelName.toLowerCase()}/flag/${existingDoc.flag}`
       );
-      if (fs.existsSync(flagPath)) {
-        fs.unlinkSync(flagPath);
-      }
+      if (fs.existsSync(flagPath)) fs.unlinkSync(flagPath);
     }
 
     if (existingDoc.gallery && req.files && req.files.gallery) {
@@ -323,9 +320,7 @@ exports.updateWithImage = async (Model, req, res) => {
           __dirname,
           `../../../public/uploads/${modelName.toLowerCase()}/gallery/${filename}`
         );
-        if (fs.existsSync(galleryPath)) {
-          fs.unlinkSync(galleryPath);
-        }
+        if (fs.existsSync(galleryPath)) fs.unlinkSync(galleryPath);
       });
     }
 
@@ -336,7 +331,7 @@ exports.updateWithImage = async (Model, req, res) => {
         ...updateFields,
         image: req.body.image !== updatedImage ? req.body.image : updatedImage,
         flag: req.body.flag !== updatedFlag ? req.body.flag : updatedFlag,
-        gallery: req.body.gallery !== updatedGallery ? req.body.gallery :  updatedGallery,
+        gallery: req.body.gallery !== updatedGallery ? req.body.gallery : updatedGallery,
       },
       { new: true }
     );
