@@ -227,7 +227,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Generate a reset token
-    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const resetToken = jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
 
     // Save the token to the user's record (optional, if you want to verify it later)
     user.resetPasswordToken = resetToken;
@@ -259,7 +259,7 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     const user = await User.findOne({ _id: decoded.id });
 
     if (!user) {
@@ -280,77 +280,9 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-exports.isValidToken = async (req, res, next) => {
-  try {
-    const token = req.header("x-auth-token");
-    if (!token)
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "No authentication token, authorization denied.",
-        jwtExpired: true,
-      });
-
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!verified)
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Token verification failed, authorization denied.",
-        jwtExpired: true,
-      });
-
-    const admin = await User.findOne({ _id: verified.id });
-    if (!admin)
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Admin doens't Exist, authorization denied.",
-        jwtExpired: true,
-      });
-
-    if (admin.isLoggedIn === false)
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Admin is already logged out try to login, authorization denied.",
-        jwtExpired: true,
-      });
-    else {
-      req.admin = admin;
-      next();
-    }
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      data: null,
-      message: err.message,
-      jwtExpired: true,
-    });
-  }
-};
-
 exports.logout = async (req, res) => {
   const cookies = req.cookies;
   if (!cookies?.jwt) return res.sendStatus(204); //No content
   res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
   res.status(200).json({ message: "Cookie cleared" });
-};
-
-exports.validateToken = async (req, res) => {
-  try {
-    const token = req.header("x-auth-token");
-    if (!token) return res.json(false);
-
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (!verified) return res.json(false);
-
-    const user = await User.findById(verified.id);
-    if (!user) return res.json(false);
-
-    return res.status(200).json({ success: true, data: user });
-  } catch (err) {
-    res.status(500).json({ success: false, data: null, message: err.message });
-  }
 };

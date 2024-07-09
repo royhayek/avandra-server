@@ -7,7 +7,6 @@ const loginLimiter = require("../middlewares/loginLimiter");
 
 router.route("/login").post(loginLimiter, authController.login);
 router.route("/register").post(authController.register);
-router.route("/validateToken").get(authController.validateToken);
 router.route("/logout").post(authController.logout);
 router.route("/refresh-token").get(authController.refreshToken);
 router.route("/reset-password").post(authController.resetPassword);
