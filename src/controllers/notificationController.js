@@ -1,11 +1,9 @@
-const mongoose = require("mongoose");
-const Device = mongoose.model("Device");
-const Language = mongoose.model("Language");
-const Notification = mongoose.model("Notification");
+const Device = require("../models/Device");
+const Notification = require("../models/Notification");;
 
 const methods = require("./crudController");
 const { Expo } = require("expo-server-sdk");
-module.exports = methods.crudController("Notification");
+module.exports = methods.crudController(require("../models/Notification"));
 
 module.exports.sendNotification = async (req, res) => {
   try {

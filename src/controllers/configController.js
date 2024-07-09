@@ -1,7 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const mongoose = require("mongoose");
-const Language = mongoose.model("Language");
+const Language = require("../models/Language");
 
 exports.read = async (req, res) => {
   try {

@@ -1,37 +1,75 @@
-const mongoose = require("mongoose");
+require("dotenv").config();
+require('express-async-errors')
 
-// Make sure we are running node 10.0+
-const [major, minor] = process.versions.node.split(".").map(parseFloat);
-if (major < 10 || (major === 10 && minor <= 0)) {
-  console.log("Please go to nodejs.org and download version 10 or greater. 👌\n ");
-  process.exit();
-}
-
-// import environmental variables from our variables.env file
-require("dotenv").config({ path: ".env" });
-
-// Connect to our Database and handle any bad connections
-// mongoose.connect(process.env.DATABASE);
-
-mongoose.connect(process.env.DATABASE).then(() => {
-  console.debug("Connected to the database");
-});
-mongoose.Promise = global.Promise; // Tell Mongoose to use ES6 promises
-mongoose.connection.on("error", (err) => {
-  console.error(`🚫 Error → : ${err.message}`);
-});
-
-const glob = require("glob");
+const cors = require("cors");
 const path = require("path");
+const cron = require("node-cron");
+const express = require("express");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 
-glob.sync("./src/models/*.js").forEach(function (file) {
-  require(path.resolve(file));
+const connectDB = require("./src/config/dbConn");
+const { logger } = require("./src/middlewares/logger");
+const corsOptions = require("./src/config/corsOptions");
+const { logEvents } = require("./src/middlewares/logger");
+const errorHandler = require("./src/middlewares/errorHandler");
+const tripController = require("./src/controllers/tripController");
+
+const app = express();
+
+const PORT = process.env.PORT || 3500;
+
+console.log(process.env.NODE_ENV);
+
+connectDB();
+
+app.use(logger);
+
+app.use(cors(corsOptions));
+
+app.use(bodyParser.json());
+
+app.use(cookieParser());
+
+// Serve static files from the 'public' director.
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/.well-known", express.static(path.join(__dirname, ".well-known")));
+app.get("/.well-known/apple-app-site-association", (req, res) => {
+  res.sendFile(path.join(__dirname, ".well-known/apple-app-site-association"));
 });
 
-// Start our app!
-const { server } = require("./app");
-server.listen(process.env.PORT || 80, () => {
-  console.log(`Server running on port ${process.env.PORT || 3000}`);
+app.use("/", require("./src/routes/root"));
+app.use("/api/auth", require("./src/routes/authRoutes"));
+app.use("/api", require("./src/routes/publicRoutes"));
+app.use("/api", require("./src/routes/privateRoutes"));
+
+// If above routes didnt work, we 404 them and forward to error handler
+app.all("*", (req, res) => {
+  res.status(404);
+  if (req.accepts("html")) {
+    res.sendFile(path.join(__dirname, "./src", "views", "404.html"));
+  } else if (req.accepts("json")) {
+    res.json({ message: "404 Not Found" });
+  } else {
+    res.type("txt").send("404 Not Found");
+  }
 });
 
-module.exports = server;
+app.use(errorHandler);
+
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+
+  app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+  // Schedule the task to run every day at midnight
+  setTimeout(() => {
+    cron.schedule("0 0 * * *", tripController.updateTripStatus);
+  }, 1000);
+});
+
+mongoose.connection.on("error", (err) => {
+  console.log(`🚫 Error → : ${err.message}`);
+  logEvents(`${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`, "mongoErrLog.log");
+});

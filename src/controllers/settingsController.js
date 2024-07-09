@@ -1,8 +1,7 @@
-const mongoose = require("mongoose");
-const Settings = mongoose.model("Settings");
+const Settings = require("../models/Settings");
 
 const methods = require("./crudController");
-module.exports = methods.crudController("Settings");
+module.exports = methods.crudController(require("../models/Settings"));
 
 module.exports.config = async (req, res) => {
   try {

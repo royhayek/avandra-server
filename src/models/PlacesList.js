@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
-const placeSchema = mongoose.model("Place").schema;
+const placeSchema = require("./Place").schema;
 
 const placesListSchema = new Schema({
   date: {

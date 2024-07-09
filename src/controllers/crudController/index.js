@@ -1,40 +1,40 @@
 const crudMethods = require("./crudMethods");
-const mongoose = require("mongoose");
+// const mongoose = require("mongoose");
 
-exports.crudController = (modelName) => {
-  const Model = mongoose.model(modelName);
+exports.crudController = (Collection) => {
+  // const Model = require(`../models/${modelName}`);
   let methods = {};
 
   methods.create = async (req, res) => {
-    crudMethods.create(Model, req, res);
+    crudMethods.create(Collection, req, res);
   };
 
   methods.createWithImage = async (req, res) => {
-    crudMethods.createWithImage(Model, req, res);
+    crudMethods.createWithImage(Collection, req, res);
   };
 
   methods.read = async (req, res) => {
-    crudMethods.read(Model, req, res);
+    crudMethods.read(Collection, req, res);
   };
 
   methods.update = async (req, res) => {
-    crudMethods.update(Model, req, res);
+    crudMethods.update(Collection, req, res);
   };
 
   methods.updateWithImage = async (req, res) => {
-    crudMethods.updateWithImage(Model, req, res);
+    crudMethods.updateWithImage(Collection, req, res);
   };
 
   methods.delete = async (req, res) => {
-    crudMethods.delete(Model, req, res);
+    crudMethods.delete(Collection, req, res);
   };
 
   methods.list = async (req, res) => {
-    crudMethods.list(Model, req, res);
+    crudMethods.list(Collection, req, res);
   };
 
   methods.search = async (req, res) => {
-    crudMethods.search(Model, req, res);
+    crudMethods.search(Collection, req, res);
   };
 
   return methods;

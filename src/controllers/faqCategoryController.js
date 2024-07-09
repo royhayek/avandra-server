@@ -1,2 +1,2 @@
 const methods = require("./crudController");
-module.exports = methods.crudController("FaqCategory");
+module.exports = methods.crudController(require("../models/FaqCategory"));

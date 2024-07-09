@@ -1,10 +1,9 @@
-const mongoose = require("mongoose");
-const Faq = mongoose.model("Faq");
-const Language = mongoose.model("Language");
+const Faq = require("../models/Faq");
+const Language = require("../models/Language");
 
-const { generatePopulationOptions } = require("../helpers");
 const methods = require("./crudController");
-module.exports = methods.crudController("Faq");
+const { generatePopulationOptions } = require("../helpers");
+module.exports = methods.crudController(require("../models/Faq"));
 
 module.exports.list = async (req, res) => {
   const lang = req.headers["accept-language"];
@@ -33,9 +32,7 @@ module.exports.list = async (req, res) => {
     // Execute the query with dynamic population
     const result = await query.exec();
     const count = await Faq.countDocuments(
-      languageId
-        ? { language: languageId, category: req.params.id }
-        : { category: req.params.id }
+      languageId ? { language: languageId, category: req.params.id } : { category: req.params.id }
     );
 
     // Calculate total pages
@@ -58,8 +55,6 @@ module.exports.list = async (req, res) => {
     }
   } catch (error) {
     console.error(error); // Log the error for debugging
-    return res
-      .status(500)
-      .json({ success: false, data: [], message: "Oops, there is an error" });
+    return res.status(500).json({ success: false, data: [], message: "Oops, there is an error" });
   }
 };

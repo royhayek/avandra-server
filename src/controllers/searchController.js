@@ -1,6 +1,4 @@
-const mongoose = require("mongoose");
-const Search = mongoose.model("Search");
-const Language = mongoose.model("Language");
+const Search = require("../models/Search");
 
 module.exports.increment = async (req, res) => {
   const lang = req.headers["accept-language"];

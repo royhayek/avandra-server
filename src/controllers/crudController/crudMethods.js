@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 
 const { generatePopulationOptions } = require("../../helpers");
 
-const Language = mongoose.model("Language");
+const Language = require("../../models/Language");
 
 /**
  * Retrieves a single document by ID.
@@ -287,10 +287,6 @@ exports.updateWithImage = async (Model, req, res) => {
         message: `${modelName} not found`,
       });
     }
-
-    console.debug('req.body', req.body)
-    console.debug('req.files && req.files.image ? req.files.image[0].filename : existingDoc.image', req.files && req.files.image ? req.files.image[0].filename : existingDoc.image)
-
     // Check if the image, flag, and gallery are provided in the request
     const updatedImage = req.files && req.files.image ? req.files.image[0].filename : existingDoc.image;
     const updatedFlag = req.files && req.files.flag ? req.files.flag[0].filename : existingDoc.flag;

@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 
-const User = mongoose.model("User");
-const Trip = mongoose.model("Trip");
-const Message = mongoose.model("Message");
-const Device = mongoose.model("Device");
+const User = require("../models/User");
+const Trip = require("../models/Trip");
+const Message = require("../models/Message");
+const Device = require("../models/Device");
 
 /**
  *  Get all documents of a Model
@@ -16,11 +16,7 @@ exports.list = async (req, res) => {
   const skip = page * limit - limit;
   try {
     //  Query the database for a list of all results
-    const resultsPromise = User.find({ _id: { $ne: req.admin._id } })
-      .skip(skip)
-      .limit(limit)
-      .sort({ created: "desc" })
-      .populate();
+    const resultsPromise = User.find().skip(skip).limit(limit).sort({ created: "desc" }).populate();
     // Counting the total documents
     const countPromise = User.countDocuments();
     // Resolving both promises
@@ -362,6 +358,7 @@ exports.delete = async (req, res) => {
       // If user was found and deleted, delete all related trips and messages
       await Trip.deleteMany({ user: req.params.id });
       await Message.deleteMany({ user: req.params.id });
+      await Device.deleteMany({ user: req.params.id });
 
       return res.status(200).json({
         success: true,

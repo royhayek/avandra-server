@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
-// const directionSchema = mongoose.model("Direction").schema;
+// const directionSchema = require("../models/Direction");.schema;
 
 const placeSchema = new Schema({
   name: {

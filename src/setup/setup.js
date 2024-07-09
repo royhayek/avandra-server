@@ -4,7 +4,7 @@ const fs = require("fs");
 const mongoose = require("mongoose");
 const Settings = require("../models/Settings");
 
-mongoose.connect(process.env.DATABASE);
+mongoose.connect(process.env.DATABASE_URI);
 mongoose.Promise = global.Promise; // Tell Mongoose to use ES6 promises
 
 // import all of our models - they need to be imported only once

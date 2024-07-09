@@ -1,11 +1,9 @@
-const mongoose = require("mongoose");
-
-const User = mongoose.model("User");
-const Message = mongoose.model("Message");
+const User = require("../models/User");
+const Message = require("../models/Message");
 
 const { sendEmail } = require("../helpers");
 const methods = require("./crudController");
-module.exports = methods.crudController("Message");
+module.exports = methods.crudController(require("../models/Message"));
 
 module.exports.sendMessage = async (req, res) => {
   try {

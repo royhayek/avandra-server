@@ -1,2 +1,2 @@
 const methods = require("./crudController");
-module.exports = methods.crudController("Budget");
+module.exports = methods.crudController(require("../models/Budget"));

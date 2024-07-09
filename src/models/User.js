@@ -5,14 +5,6 @@ const Schema = mongoose.Schema;
 mongoose.Promise = global.Promise;
 
 const userSchema = new Schema({
-  removed: {
-    type: Boolean,
-    default: false,
-  },
-  enabled: {
-    type: Boolean,
-    default: true,
-  },
   email: {
     type: String,
     unique: true,
@@ -32,6 +24,12 @@ const userSchema = new Schema({
     type: String,
     default: "user",
   },
+  roles: [
+    {
+      type: String,
+      default: "Admin",
+    },
+  ],
   country: {
     type: String,
   },
@@ -48,6 +46,14 @@ const userSchema = new Schema({
   },
   isLoggedIn: {
     type: Boolean,
+  },
+  removed: {
+    type: Boolean,
+    default: false,
+  },
+  enabled: {
+    type: Boolean,
+    default: true,
   },
 });
 

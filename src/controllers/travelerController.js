@@ -1,2 +1,2 @@
 const methods = require("./crudController");
-module.exports = methods.crudController("Traveler");
+module.exports = methods.crudController(require("../models/Traveler"));

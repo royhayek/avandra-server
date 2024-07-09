@@ -1,2 +1,2 @@
 const methods = require("./crudController");
-module.exports = methods.crudController("Language");
+module.exports = methods.crudController(require("../models/Language"));

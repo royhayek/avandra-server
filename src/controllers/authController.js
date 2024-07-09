@@ -1,21 +1,37 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const mongoose = require("mongoose");
-
-const User = mongoose.model("User");
+const User = require("../models/User");
 
 const { sendEmail } = require("../helpers");
 require("dotenv").config({ path: ".env" });
 
-const generateJwtToken = (id) =>
-  jwt.sign(
+const generateJwtToken = (user, res) => {
+  const accessToken = jwt.sign(
     {
-      id,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 10, // Set token expiration (e.g., 10 days)
+      UserInfo: {
+        username: user.username,
+        roles: user.roles,
+      },
     },
-    process.env.JWT_SECRET
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" }
   );
+
+  const refreshToken = jwt.sign({ username: user.username }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: "7d",
+  });
+
+  // Create secure cookie with refresh token
+  res.cookie("jwt", refreshToken, {
+    httpOnly: true, //accessible only by web server
+    secure: true, //https
+    sameSite: "None", //cross-site cookie
+    maxAge: 7 * 24 * 60 * 60 * 1000, //cookie expiry: set to match rT
+  });
+
+  return accessToken;
+};
 
 exports.register = async (req, res) => {
   try {
@@ -56,12 +72,12 @@ exports.register = async (req, res) => {
 
     if (existingUser) {
       // If the user already exists, generate a new access token and include it in the response
-      const token = generateJwtToken(existingUser._id);
+      const accessToken = generateJwtToken(existingUser, res);
 
       return res.status(200).json({
         success: true,
         user: existingUser,
-        token,
+        token: accessToken,
         providerId,
         message: "User already exists with this email or providerId",
       });
@@ -85,7 +101,7 @@ exports.register = async (req, res) => {
 
     const savedUser = await newUser.save();
 
-    const token = generateJwtToken(savedUser._id);
+    const accessToken = generateJwtToken(savedUser, res);
 
     if (isLocalSignIn) {
       try {
@@ -105,7 +121,7 @@ exports.register = async (req, res) => {
     res.status(200).json({
       success: true,
       user: savedUser,
-      token,
+      token: accessToken,
     });
   } catch (err) {
     console.debug("error", err);
@@ -149,20 +165,47 @@ exports.login = async (req, res) => {
         message: "Invalid email or password!",
       });
 
-    const token = generateJwtToken(user.id);
-
-    // const result = await User.findOneAndUpdate({ _id: user._id }).exec();
+    const accessToken = generateJwtToken(user, res);
 
     res.json({
       success: true,
       user,
-      token,
+      token: accessToken,
     });
   } catch (err) {
     console.debug("error", err);
     // res.status(500).json({ success: false, data: null, message: err.message });
     res.status(500).json({ success: false, data: null, message: err.message });
   }
+};
+
+exports.refreshToken = (req, res) => {
+  const cookies = req.cookies;
+
+  if (!cookies?.jwt) return res.status(401).json({ message: "Unauthorized" });
+
+  const refreshToken = cookies.jwt;
+
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Forbidden" });
+
+    const foundUser = await User.findOne({ username: decoded.username }).exec();
+
+    if (!foundUser) return res.status(401).json({ message: "Unauthorized" });
+
+    const accessToken = jwt.sign(
+      {
+        UserInfo: {
+          username: foundUser.username,
+          roles: foundUser.roles,
+        },
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    res.json({ accessToken });
+  });
 };
 
 exports.checkLoggedIn = async (req, res) => {
@@ -289,15 +332,10 @@ exports.isValidToken = async (req, res, next) => {
 };
 
 exports.logout = async (req, res) => {
-  const result = await User.findOneAndUpdate(
-    { _id: req.admin._id },
-    { isLoggedIn: false },
-    {
-      new: true,
-    }
-  ).exec();
-
-  res.status(200).json({ isLoggedIn: result.isLoggedIn });
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(204); //No content
+  res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: true });
+  res.status(200).json({ message: "Cookie cleared" });
 };
 
 exports.validateToken = async (req, res) => {

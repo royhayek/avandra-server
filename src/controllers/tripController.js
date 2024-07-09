@@ -1,17 +1,16 @@
 const axios = require("axios");
 const OpenAI = require("openai");
-const mongoose = require("mongoose");
 
-const Trip = mongoose.model("Trip");
-const Budget = mongoose.model("Budget");
-const Traveler = mongoose.model("Traveler");
-const Language = mongoose.model("Language");
-const Destination = mongoose.model("Destination");
+const Trip = require("../models/Trip");
+const Budget = require("../models/Budget");
+const Traveler = require("../models/Traveler");
+const Language = require("../models/Language");
+const Destination = require("../models/Destination");
 
 const methods = require("./crudController");
 const { formatDateToYYYYMMDD } = require("../helpers");
 
-module.exports = methods.crudController("Trip");
+module.exports = methods.crudController(require("../models/Trip"));
 
 const openai = new OpenAI({
   apiKey: process.env["OPENAI_API_KEY"],
@@ -96,7 +95,7 @@ const fetchPlacesDetails = async (places, apiKey, language) => {
   return results;
 };
 
-module.exports.generate = (io) => async (req, res) => {
+module.exports.generate = async (req, res) => {
   try {
     const regenerating = req.body.regenerate;
     const tripId = req.body._id;
@@ -264,33 +263,6 @@ module.exports.generate = (io) => async (req, res) => {
     console.error(err);
     return res.status(500).json({ success: false, error: err.message });
   }
-};
-
-module.exports.socketTest = (io) => {
-  return async (req, res) => {
-    const socketId = req.body.socketId;
-    const socket = io.to(socketId);
-
-    // Initial progress update
-    socket.emit("progress", { message: "Started generating your trip...", percent: 0 });
-
-    // Generate summary and tips
-    socket.emit("progress", { message: "Generating summary and tips...", percent: 25 });
-
-    // Generate places to visit
-    socket.emit("progress", { message: "Generating places to visit...", percent: 50 });
-
-    // Parse info and places JSON objects
-    socket.emit("progress", { message: "Finalizing details...", percent: 75 });
-
-    // Creating a new document in the collection
-    socket.emit("progress", { message: "Itinerary generation complete.", percent: 100 });
-
-    return res.status(200).json({
-      success: true,
-      result: null,
-    });
-  };
 };
 
 module.exports.tripsByUser = async (req, res) => {
@@ -492,6 +464,7 @@ module.exports.getTripById = async (req, res) => {
 
 module.exports.updateTripStatus = async () => {
   try {
+    console.log("updating statuses");
     const today = formatDateToYYYYMMDD(new Date());
 
     // Set status to 'active' if today is within fromDate and toDate
