@@ -88,13 +88,11 @@ router.route("/faqcategory/create").post(faqCategoryController.create);
 router.route("/faqcategory/read/:id").get(faqCategoryController.read);
 router.route("/faqcategory/update/:id").patch(faqCategoryController.update);
 router.route("/faqcategory/delete/:id").delete(faqCategoryController.delete);
-router.route("/faqcategory/list").get(faqCategoryController.list);
 
 router.route("/faq/create").post(faqController.create);
 router.route("/faq/read/:id").get(faqController.read);
 router.route("/faq/update/:id").patch(faqController.update);
 router.route("/faq/delete/:id").delete(faqController.delete);
-router.route("/faq/list/:id").get(faqController.list);
 
 router.route("/trip/generate").post(tripController.generate);
 router.route("/trip/create").post(tripController.createWithImage);

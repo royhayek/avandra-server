@@ -10,7 +10,7 @@ const generateJwtToken = (user, res) => {
   const accessToken = jwt.sign(
     {
       UserInfo: {
-        username: user.username,
+        email: user.email,
         roles: user.roles,
       },
     },
@@ -18,7 +18,7 @@ const generateJwtToken = (user, res) => {
     { expiresIn: "15m" }
   );
 
-  const refreshToken = jwt.sign({ username: user.username }, process.env.REFRESH_TOKEN_SECRET, {
+  const refreshToken = jwt.sign({ email: user.email }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: "7d",
   });
 
@@ -30,7 +30,7 @@ const generateJwtToken = (user, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, //cookie expiry: set to match rT
   });
 
-  return accessToken;
+  return { accessToken, refreshToken };
 };
 
 exports.register = async (req, res) => {
@@ -72,12 +72,13 @@ exports.register = async (req, res) => {
 
     if (existingUser) {
       // If the user already exists, generate a new access token and include it in the response
-      const accessToken = generateJwtToken(existingUser, res);
+      const { accessToken, refreshToken } = generateJwtToken(existingUser, res);
 
       return res.status(200).json({
         success: true,
         user: existingUser,
         token: accessToken,
+        refreshToken,
         providerId,
         message: "User already exists with this email or providerId",
       });
@@ -101,7 +102,7 @@ exports.register = async (req, res) => {
 
     const savedUser = await newUser.save();
 
-    const accessToken = generateJwtToken(savedUser, res);
+    const { accessToken, refreshToken } = generateJwtToken(savedUser, res);
 
     if (isLocalSignIn) {
       try {
@@ -122,6 +123,7 @@ exports.register = async (req, res) => {
       success: true,
       user: savedUser,
       token: accessToken,
+      refreshToken,
     });
   } catch (err) {
     console.debug("error", err);
@@ -165,12 +167,13 @@ exports.login = async (req, res) => {
         message: "Invalid email or password!",
       });
 
-    const accessToken = generateJwtToken(user, res);
+    const { accessToken, refreshToken } = generateJwtToken(user, res);
 
     res.json({
       success: true,
       user,
       token: accessToken,
+      refreshToken,
     });
   } catch (err) {
     console.debug("error", err);
@@ -180,11 +183,20 @@ exports.login = async (req, res) => {
 };
 
 exports.refreshToken = (req, res) => {
-  const cookies = req.cookies;
+  let refreshToken;
 
-  if (!cookies?.jwt) return res.status(401).json({ message: "Unauthorized" });
+  console.log("[refreshToken] :: ", req.headers.authorization);
+  // Check for token in cookies
+  if (req.cookies && req.cookies.jwt) {
+    refreshToken = req.cookies.jwt;
+  }
 
-  const refreshToken = cookies.jwt;
+  // Check for token in headers if not found in cookies
+  if (!refreshToken && req.headers.authorization) {
+    refreshToken = req.headers.authorization;
+  }
+
+  if (!refreshToken) return res.status(401).json({ message: "Unauthorized" });
 
   jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, decoded) => {
     if (err) return res.status(403).json({ message: "Forbidden" });
@@ -201,7 +213,7 @@ exports.refreshToken = (req, res) => {
         },
       },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "1m" }
     );
 
     res.json({ accessToken });
