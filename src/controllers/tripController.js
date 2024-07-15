@@ -471,11 +471,9 @@ module.exports.getTripById = async (req, res) => {
 
 module.exports.updateTripStatus = async () => {
   try {
-    console.log("updating statuses");
     const today = formatDateToYYYYMMDD(new Date());
 
     // Set status to 'active' if today is within fromDate and toDate
-    console.debug("today", today);
     const activateTrips = await Trip.updateMany(
       {
         "payload.fromDate": { $lte: today },
@@ -484,7 +482,6 @@ module.exports.updateTripStatus = async () => {
       },
       { $set: { status: "active" } }
     );
-    console.debug("activateTrips", activateTrips);
 
     // Set status to 'expired' if today is past toDate
     const expireTrips = await Trip.updateMany(
@@ -494,17 +491,6 @@ module.exports.updateTripStatus = async () => {
       },
       { $set: { status: "expired" } }
     );
-    console.debug("expireTrips", expireTrips);
-
-    // Reset status to 'active' for trips marked as 'expired' but not passing today's date
-    const resetExpiredTrips = await Trip.updateMany(
-      {
-        "payload.toDate": { $gte: today },
-        status: "expired",
-      },
-      { $set: { status: "active" } }
-    );
-    console.debug("resetExpiredTrips", resetExpiredTrips);
   } catch (error) {
     console.error("Error updating trip statuses:", error);
   }
