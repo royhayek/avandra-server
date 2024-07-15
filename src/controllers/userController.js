@@ -339,6 +339,48 @@ exports.updatePassword = async (req, res) => {
   }
 };
 
+exports.updateSubscription = async (req, res) => {
+  try {
+    let { userId, isPremium } = req.body;
+
+    if (isPremium === undefined) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "isPremium field is missing.",
+      });
+    }
+
+    let updates = {
+      isPremium,
+    };
+
+    // Find document by id and updates with the required fields
+    const result = await User.findOneAndUpdate({ _id: userId }, { $set: updates }, { new: true }).exec();
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "No User found by this id: " + userId,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: null,
+      message: "User subscription updated successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: "Oops there is an Error",
+    });
+  }
+};
+
 exports.delete = async (req, res) => {
   try {
     let updates = {

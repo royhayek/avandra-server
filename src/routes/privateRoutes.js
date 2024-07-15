@@ -21,6 +21,7 @@ const walkthroughController = require("../controllers/walkthroughController");
 const notificationController = require("../controllers/notificationController");
 
 const verifyJWT = require("../middlewares/verifyJWT");
+const checkTripLimit = require("../middlewares/tripLimiter");
 
 router.use(verifyJWT);
 
@@ -33,6 +34,7 @@ router.route("/user/search").get(userController.search);
 router.route("/user/list").get(userController.list);
 router.route("/user/password-update/:id").patch(userController.updatePassword);
 router.route("/user/device-info").post(userController.deviceInfo);
+router.route("/user/update-subscription").patch(userController.updateSubscription);
 
 // *** Configuration Routes *** //
 router.route("/config").get(configController.read);
@@ -94,7 +96,7 @@ router.route("/faq/read/:id").get(faqController.read);
 router.route("/faq/update/:id").patch(faqController.update);
 router.route("/faq/delete/:id").delete(faqController.delete);
 
-router.route("/trip/generate").post(tripController.generate);
+router.route("/trip/generate").post(checkTripLimit, tripController.generate);
 router.route("/trip/create").post(tripController.createWithImage);
 router.route("/trip/read/:id").get(tripController.getTripById);
 router.route("/trip/update/:id").patch(tripController.updateWithImage);

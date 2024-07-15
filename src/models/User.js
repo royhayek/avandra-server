@@ -55,6 +55,18 @@ const userSchema = new Schema({
     type: Boolean,
     default: true,
   },
+  tripCount: {
+    type: Number,
+    default: 0,
+  },
+  lastTripDate: {
+    type: Date,
+    default: null,
+  },
+  isPremium: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // generating a hash

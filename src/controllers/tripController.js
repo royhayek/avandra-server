@@ -1,6 +1,7 @@
 const axios = require("axios");
 const OpenAI = require("openai");
 
+const User = require("../models/User");
 const Trip = require("../models/Trip");
 const Budget = require("../models/Budget");
 const Traveler = require("../models/Traveler");
@@ -246,6 +247,12 @@ module.exports.generate = async (req, res) => {
       location: parsedInfoObject.location,
       description: parsedInfoObject.summary,
     };
+
+    // Updating user trip count and last trip date
+    const currentUser = await User.findById(user);
+    currentUser.tripCount += 1;
+    currentUser.lastTripDate = new Date();
+    await currentUser.save();
 
     // Finalizing and saving the trip details
     const savedTrip =
