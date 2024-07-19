@@ -67,6 +67,10 @@ const tripSchema = new Schema(
       required: true,
     },
     places: [PlacesList.schema],
+    isModifiable: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       required: true,

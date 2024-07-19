@@ -108,6 +108,7 @@ router.route("/trip/places/:id").get(tripController.readTripPlaces);
 router.route("/trip/place/:id/:placeId/:date").delete(tripController.deletePlace);
 router.route("/trip/places/:id").patch(tripController.updateTripPlaces);
 router.route("/trip/places/popular/:id").get(tripController.getPopularPlaces);
+router.route("/trip/editability/:tripId").patch(tripController.updateEditability);
 
 router.route("/settings/create").post(settingsController.create);
 router.route("/settings/read/:id").get(settingsController.read);

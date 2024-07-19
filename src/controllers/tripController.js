@@ -495,3 +495,23 @@ module.exports.updateTripStatus = async () => {
     console.error("Error updating trip statuses:", error);
   }
 };
+
+module.exports.updateEditability = async (req, res) => {
+  const { tripId } = req.params;
+  const { userId, isModifiable } = req.body;
+
+  try {
+    const trip = await Trip.findOne({ _id: tripId, user: userId });
+
+    if (!trip) {
+      return res.status(404).send({ error: "Trip not found or you do not have permission to update it" });
+    }
+
+    trip.isModifiable = isModifiable;
+    await trip.save();
+
+    res.status(200).send({ success: true, message: "Trip updated successfully" });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+};

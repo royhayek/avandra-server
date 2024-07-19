@@ -6,6 +6,10 @@ const allowedOrigins = [
   "http://192.168.1.102:4000",
   "avandra-server-goy2v.ondigitalocean.app",
   "https://avandra-server-goy2v.ondigitalocean.app",
+  "http://server.avandraapp.com:4000",
+  "https://server.avandraapp.com:4000",
+  "https://server.avandraapp.com",
+  "http://server.avandraapp.com"
 ];
 
 module.exports = allowedOrigins;
